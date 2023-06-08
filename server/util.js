@@ -178,11 +178,28 @@ const parseBundles = (catalog) => {
   return bundles;
 };
 
+/**
+ * This function is responsible for creating all of the JSON files in xml/parsed
+ * (default location). It calls all of the individual parsing functions for
+ * systems, devices, components, and bundles. It then writes out the data to
+ * the respective JSON files.
+ * @param {fs.Dirent} xmlFile An fs.Dirent object pointing to the repository file.
+ * Ex: R440_1.00_Catalog.xml
+ * @param {string} repo_path Path to the repo for processing. Ex: /opt/patches/r440
+ * @param {string} folderName The name of the repo folder. Ex: r440
+ */
 module.exports.parseCatalog = (xmlFile, repo_path, folderName) => {
   let catalog = {};
   let xmlFileIdent = xmlFile.name.split("_")[0];
 
-  fs.readFile(path.join(repo_path, xmlFile.name), "utf16le", (err, data) => {
+  fs.readFile(path.join(repo_path, xmlFile.name), "utf-16le", (err, data) => {
+
+    if (err) {
+      console.error(`ERROR: Patches encountered an error while processing the 
+      repository XML file for the repository 
+      ${path.join(repo_path, xmlFile.name)}. The error was ${err}.`);
+    }
+
     parser.parseString(data, (err, result) => {
       catalog = result;
     });
@@ -197,10 +214,10 @@ module.exports.parseCatalog = (xmlFile, repo_path, folderName) => {
     Object.keys(parsed).forEach((item) => {
       fs.writeFileSync(
         path.join(parsed_path, `${xmlFileIdent}_${item}.json`),
-        JSON.stringify(parsed[item], undefined, 2),
-        "utf16le",
+        JSON.stringify(parsed[item], space=2),
+        "utf8",
         () => {
-          console.log(`${item} finished`);
+          console.info(`INFO: ${item} finished`);
         }
       );
     });

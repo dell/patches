@@ -1,0 +1,86 @@
+[grant@patches2 podman-build]$ openssl x509 -text -noout -in ../../rootCA.pem
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            54:e2:a9:17:57:7b:56:f5:c5:ba:e6:d9:e7:76:25:14:d6:26:b5:7a
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = US, ST = Ohio, L = Dayton, O = Dell, CN = rootCA
+        Validity
+            Not Before: Jun  7 16:20:32 2023 GMT
+            Not After : Jun  4 16:20:32 2033 GMT
+        Subject: C = US, ST = Ohio, L = Dayton, O = Dell, CN = rootCA
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (4096 bit)
+                Modulus:
+                    00:c5:c9:b7:5f:c6:5b:d0:c0:9a:e3:9c:fe:b5:ec:
+                    74:ba:06:7d:d3:e8:d6:57:9e:4d:22:85:95:15:e5:
+                    94:20:21:a9:9c:17:dd:a9:b7:bd:a7:9a:b4:46:c9:
+                    01:38:ad:7e:77:a0:4a:9e:0d:44:b2:77:4d:b4:8e:
+                    7b:de:55:51:61:0b:0c:11:b4:70:3e:c8:5d:db:a3:
+                    df:9e:6f:25:e7:2d:4e:7d:97:fc:67:ea:44:34:fe:
+                    61:05:9d:90:65:81:99:6d:cc:9b:d4:c7:89:5e:97:
+                    30:54:ba:ad:00:f8:72:06:2b:0e:c5:74:2c:f5:00:
+                    b2:7d:c8:bb:e7:98:be:b0:dd:bf:d3:4e:fb:fc:0b:
+                    0b:67:8a:db:7f:51:92:b7:04:e1:00:ff:b6:97:0b:
+                    f9:85:92:61:3e:65:83:6d:a8:6e:d8:8e:b0:ee:8b:
+                    93:ba:87:d6:d3:2c:1b:95:46:29:ef:85:cf:bb:7d:
+                    3a:3f:75:83:92:03:0f:36:ab:98:ed:9f:90:15:24:
+                    af:d2:a7:ad:90:97:25:71:ed:a9:dd:6d:c4:87:aa:
+                    9e:c2:9e:79:10:55:82:de:42:c6:ee:22:df:13:09:
+                    60:24:63:a9:3b:8b:79:66:d1:ab:c9:07:08:47:60:
+                    c8:04:cb:43:23:1e:f7:5f:90:4f:1a:8f:5b:d9:cf:
+                    3b:c9:b5:58:47:43:e9:1e:d1:d2:ee:6f:41:4b:45:
+                    44:54:75:0b:b6:75:2f:a8:d3:e4:ee:36:59:7b:b0:
+                    dd:43:77:3c:7a:0f:00:ac:a5:9e:6e:89:fd:19:eb:
+                    37:09:ec:df:ed:36:e1:6f:ba:f8:d7:2e:e1:5a:d8:
+                    66:58:31:d1:44:95:9a:3d:05:6f:1d:fa:0c:19:a1:
+                    0d:49:30:3c:af:01:15:c5:87:c7:ad:40:e3:92:91:
+                    95:69:48:5e:0e:80:bc:cd:97:6d:b0:e6:99:6a:bd:
+                    b5:5e:64:a4:2c:38:ee:f0:4d:bd:11:16:c6:c5:b1:
+                    50:50:f4:eb:2b:d4:8d:cb:65:6c:2f:44:9a:6e:55:
+                    10:c3:9a:c7:8e:eb:5c:7c:6d:ca:5c:a8:dd:03:09:
+                    41:f3:68:83:d3:62:3e:e4:21:e7:69:40:5f:2e:ec:
+                    6e:3b:a0:58:6d:0b:97:9f:d3:84:d9:4d:75:0e:43:
+                    f0:e9:cb:41:41:58:f7:ed:63:09:89:21:ca:4b:20:
+                    a5:e4:3f:03:cc:d2:b0:94:a9:bc:5f:ad:6e:26:0d:
+                    a6:66:50:4c:12:fd:2e:45:54:a2:f1:95:7b:a4:67:
+                    9a:7f:62:0a:6c:c7:11:42:49:9b:09:7f:dd:cf:f7:
+                    ba:c4:92:d5:dc:3c:8a:80:15:d7:97:42:7b:7f:33:
+                    0a:a4:2f
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: critical
+                CA:TRUE
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        a1:10:32:ac:ab:f9:27:ca:86:66:88:44:a5:ec:93:56:98:48:
+        33:66:3d:4a:39:27:94:48:5b:70:d4:2a:5e:32:9c:76:2b:21:
+        ca:01:50:86:29:b4:bd:a0:1c:2b:55:d4:f7:4f:5a:ec:75:1b:
+        2d:bd:e2:75:b1:2e:c3:d2:30:cf:7a:93:b8:00:f1:a2:75:98:
+        ab:77:8f:bd:38:6c:49:10:26:0e:6e:eb:44:f9:39:cb:e6:7a:
+        f4:31:82:78:cf:7b:3d:96:70:d6:da:68:d2:10:02:97:4d:0c:
+        5c:fb:4e:b3:7a:1e:30:04:e6:ff:e9:28:4d:b9:65:b6:f7:07:
+        38:41:71:17:4d:09:c0:2b:bb:db:93:c9:d5:ee:61:4d:e9:52:
+        58:1d:fc:b1:3c:3d:63:a7:c4:3a:47:d5:5b:b3:df:fa:31:fb:
+        e3:c0:b9:93:48:00:6d:d3:60:e9:31:6f:50:bb:8c:c6:99:f0:
+        a0:5e:93:96:45:ec:1b:1f:4b:e5:c4:fc:4d:99:a2:cc:83:33:
+        70:ba:cd:d8:4c:1b:ec:93:60:41:f9:f9:8b:97:7a:ef:6d:8e:
+        8b:35:52:7c:ea:94:69:17:74:7e:b1:b8:46:a5:2b:0c:41:e4:
+        20:05:ab:b7:2a:5c:98:2c:f1:30:e2:96:bc:68:b6:ed:f5:5c:
+        89:ef:bd:a6:66:3e:df:4a:77:20:4e:a1:c5:8f:de:91:4c:8c:
+        eb:dc:5b:10:be:d4:f1:fa:0b:71:95:cc:e5:f4:c8:16:e8:1e:
+        de:76:a1:e2:a0:a3:86:6c:d5:9d:09:30:1d:5a:ef:be:44:1a:
+        d6:b1:e1:ad:51:8a:24:32:3a:e9:50:4e:4a:42:66:f5:89:2d:
+        da:b8:f9:73:40:13:51:57:d9:55:96:df:d4:70:8c:bb:ad:49:
+        ef:fe:80:f3:51:b9:ad:48:f4:dc:86:2c:32:5a:6d:c4:50:55:
+        fd:cd:0d:43:af:78:75:39:90:35:4c:7b:a3:a2:35:84:59:e8:
+        33:d3:93:a7:54:da:de:29:d6:04:4a:bf:17:19:a1:bc:d1:49:
+        6d:47:4e:89:fe:a6:a2:23:ee:82:ad:a4:8a:47:95:92:f3:e1:
+        a1:1f:fd:10:4f:86:57:4d:11:40:5d:89:37:16:c5:d5:32:ca:
+        1d:e2:40:86:89:07:66:ed:77:72:f8:01:90:fe:da:17:89:6a:
+        a5:a9:b8:1d:07:9d:3b:9b:8e:33:a8:78:e5:93:cd:2d:f8:48:
+        fe:74:3d:13:11:b2:aa:dd:24:c1:7e:96:91:36:1f:e7:80:30:
+        87:55:4e:c6:67:20:ef:79:4c:2b:30:a2:91:66:bc:ca:b4:a3:
+        0a:c8:1b:82:08:de:9c:f8

@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
-import qs from "qs";
-import http, { hasAdminRole } from "../../../http";
+import http from "../../../http";
 import XmlTreeComponents from "./VersionViewer";
 import "./style.css";
 import TreeView from "@mui/lab/TreeView";
 import TreeItem from "@mui/lab/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-
 
 function XmlDetails() {
 	const [expanded, setExpanded] = useState([]);
@@ -40,6 +38,11 @@ function XmlDetails() {
 		setDisplayVersionViewerVisible(false);
 	}
 
+	/**
+	 * TODO - Finish function documentation. https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635215
+	 * @param {*} node 
+	 * @returns 
+	 */
 	const renderNodeLabel = node => {
 			if (node.id !== 'root'){
 				return (
@@ -71,6 +74,11 @@ function XmlDetails() {
 		);
 	}
 
+	/**
+	 * TODO - Finish function documentation. https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635246 
+	 * @param {*} nodes 
+	 * @returns 
+	 */
 	const renderTree = (nodes) => (
 		 <TreeItem nodeId={nodes.id} label={renderNodeLabel(nodes)}>
 			 { Array.isArray(nodes.xml_files) ? nodes.xml_files.map((node) => renderTree(node)) : renderLeaf(nodes) }
@@ -83,7 +91,8 @@ function XmlDetails() {
 		);
 	}
 
-
+	// TODO - what is this aria-label="test" doing?
+	// https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635282
 	return (
 		<div className="container-fluid">
 			<TreeView

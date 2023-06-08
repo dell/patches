@@ -11,7 +11,7 @@ app.use(bodyParser.json())
 
 let catalog = {}
 const parser = new xml2js.Parser()
-fs.readFile(`${__dirname}/832021_1.00_Catalog.xml`, 'utf16le', (err, data) => {
+fs.readFile(`${__dirname}/832021_1.00_Catalog.xml`, 'utf8', (err, data) => {
   parser.parseString(data, (err, result) => {
     catalog = result
   })

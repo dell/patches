@@ -2,6 +2,7 @@ const getUserRoles = require("./roles").getUserRoles;
 
 module.exports = (app) => {
   app.get("/api/auth", (req, res) => {
+    console.log("auth user", req.user);
     let { subject, organizational_unit, organization, country } = req.user;
     authUser(req.user)
       .then((user) => {

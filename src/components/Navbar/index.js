@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import { Link } from "react-router-dom";
-import { Formik, Form, Field, ErrorMessage } from "formik";
 import { withRouter } from "react-router";
 import http, { getUser, setUser, hasAdminRole } from "../http";
 import "./style.css";
@@ -8,8 +7,13 @@ import "./style.css";
 class Navbar extends Component {
   componentDidMount = () => {
     http.get("/api/auth").then((res) => {
-      setUser(res.user);
-      // window.location.reload()
+      if (res.error) {
+        console.error(`Authenticating to the API server failed. Error was: ${res.error}`);
+      } else {
+        setUser(res.user);
+      }
+    }).catch(error => {
+      console.error(`Authenticating to the API server failed. Error was: ${error}`);
     });
   };
 

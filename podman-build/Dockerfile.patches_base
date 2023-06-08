@@ -1,0 +1,20 @@
+FROM node:lts-hydrogen
+
+# TODO - This must be updated. https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634186
+ENV NODE_OPTIONS=--openssl-legacy-provider
+
+WORKDIR /home/node/app
+RUN mkdir /patches
+RUN chown node:node -R /patches
+COPY package.json /home/node/app/
+# TODO this should absolutely be fixed https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635432
+RUN npm install --legacy-peer-deps
+COPY server /home/node/app/server
+COPY public /home/node/app/public
+COPY src /home/node/app/src
+COPY migrations /home/node/app/migrations
+RUN ln -s /home/node/app/migrations /home/node/app/server/migrations
+RUN chown node: -R /home/node/app
+RUN npm run build
+
+USER root

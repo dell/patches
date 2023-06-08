@@ -1,0 +1,47 @@
+#!/usr/bin/expect
+
+spawn bash ./DRMInstaller_3.4.3.869.bin
+
+expect "PRESS <ENTER> TO CONTINUE:"
+send "\r"
+
+expect "PRESS ANY KEY TO CONTINUE TO READ LICENSE AGREEMENT OR PRESS '0' to ADVANCE TO END:"
+send "0\r"
+
+expect "DO YOU ACCEPT THE TERMS OF THIS LICENSE AGREEMENT? (Y/N):"
+send "y\r"
+
+expect "ENTER THE NUMBER OF AN OPTION ABOVE, OR PRESS <ENTER> TO ACCEPT THE DEFAULT"
+send "3\r"
+
+expect "ENTER THE ABSOLUTE PATH TO THE SHORTCUT DIRECTORY"
+send "/tmp\r"
+
+expect "IS THIS CORRECT? (Y/N):"
+send "y\r"
+
+expect "Enter the password:"
+send "Gelanteisthebest9$\r"
+
+expect "Confirm the password:"
+send "Gelanteisthebest9$\r"
+
+expect "PRESS <ENTER> TO CONTINUE:"
+send "\r"
+
+expect "PRESS <ENTER> TO INSTALL:"
+send "\r"
+
+sleep 90
+
+expect "PRESS <ENTER> TO EXIT THE INSTALLER:"
+send "\r"
+
+sleep 60
+
+expect "PRESS <ENTER> TO ACCEPT THE FOLLOWING (OK):"
+send "\r"
+
+sleep 60
+
+expect eof

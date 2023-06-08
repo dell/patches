@@ -1,0 +1,42 @@
+# This Dockerfile defines a multi-stage build process for the base Python container.
+# In the build stage, it starts with a slim version of Python 3.12 as the base image, installs build essentials 
+# for compiling C code, and copies the requirements.txt file to the working directory. It then installs the 
+# requirements using pip and saves the resulting site-packages folder.
+# In the production stage, it starts with the same base image of Python 3.12 and copies the site-packages folder 
+# from the build stage to the new image. It then copies the generate_certificates.py and entrypoint.sh files 
+# to the working directory, makes the entrypoint.sh file executable, and sets it as the entrypoint for the container. 
+# When the container is started, it will execute the entrypoint.sh script to run the certificate generator application.
+# This container is used to create all the certificate for patches.
+# TODO - Need to make these versions paramaters. See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634868
+
+# Build stage
+FROM python:3.12.0a7-slim-bullseye AS builder
+
+ARG SCRIPT_DIR
+
+WORKDIR /app
+
+# Install build essentials for compiling C code
+RUN apt-get update && apt-get install -y build-essential libffi-dev
+
+# Copy files to the working directory
+COPY ${SCRIPT_DIR}/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir jinja2
+
+# Production stage
+FROM python:3.12.0a7-slim-bullseye
+
+ARG SCRIPT_DIR
+
+WORKDIR /app
+
+# Copy files from the build stage
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY ${SCRIPT_DIR}/generate_certificates.py .
+COPY ${SCRIPT_DIR}/generate_certificates_entrypoint.sh .
+COPY ${SCRIPT_DIR}/configure_nginx.py .
+COPY ${SCRIPT_DIR}/configure_nginx_entrypoint.sh .
+
+RUN chmod +x ./generate_certificates_entrypoint.sh
+RUN chmod +x ./configure_nginx_entrypoint.sh

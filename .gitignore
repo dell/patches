@@ -10,8 +10,6 @@
 
 # production
 /build
-.xml
-
 
 # misc
 .DS_Store
@@ -22,7 +20,6 @@
 .idea
 .tar.gz
 
-
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -30,9 +27,6 @@ yarn-error.log*
 .env
 
 standalone_db_tool/.env
-server/example_certs
-server/certs
-server/*.pem
 
 # server build info
 /downloads
@@ -47,4 +41,10 @@ server/*.pem
 server_install_package.tar.gz
 new_binary.tar.gz
 /new_binary
-/server/certs
+*.swp
+.vscode/
+*.p12
+*.crt
+*.key
+*.pem
+*.csr

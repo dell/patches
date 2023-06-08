@@ -1,0 +1,69 @@
+[grant@patches2 podman-build]$ openssl x509 -text -noout -in ../../patches.lan.pem
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            03:a6:25:58:6c:f1:cf:ba:10:51:6a:9d:d5:ab:32:98:ab:69:45:f9
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = US, ST = Ohio, L = Dayton, O = Dell, CN = rootCA
+        Validity
+            Not Before: Jun  7 16:20:32 2023 GMT
+            Not After : Jun  6 16:20:32 2026 GMT
+        Subject: C = US, ST = Ohio, L = Dayton, O = Dell, OU = Federal, CN = patches.lan
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:c1:b0:bd:18:a3:f5:93:ca:9b:c4:34:ca:bf:bc:
+                    2d:44:21:d5:c1:b1:cc:70:51:e6:34:ae:7f:9d:34:
+                    3b:ab:d5:28:f2:ca:ac:1c:e6:fd:b9:80:19:1d:f2:
+                    4c:09:ae:0e:c3:8f:e1:25:1e:f2:e0:a3:d4:14:38:
+                    0a:51:06:9c:19:a9:fc:e8:c7:03:14:76:45:a5:eb:
+                    80:e6:b8:25:c6:2c:3a:a9:3d:a6:a0:de:5e:af:84:
+                    a4:48:f7:65:3f:44:45:a9:97:24:51:f1:77:24:fa:
+                    41:78:97:a4:2d:a8:11:ae:ad:21:d6:21:f6:c2:1d:
+                    5a:04:0c:7e:10:f7:9a:00:83:d9:76:9c:f0:6e:9a:
+                    f3:f7:81:67:92:d1:39:d5:80:18:d5:d6:ae:8b:1f:
+                    e5:0c:27:5f:48:5c:5e:63:49:c5:93:65:40:a6:3e:
+                    5b:72:98:56:32:a6:95:83:32:0f:33:57:9c:d3:3b:
+                    07:68:15:ff:eb:4c:fd:c5:97:c3:6c:e2:2b:48:95:
+                    fd:2d:0e:5f:4d:a3:44:48:05:f6:89:61:4f:1e:f4:
+                    5e:8c:57:33:a3:74:44:e2:2a:72:55:8b:98:d0:02:
+                    ef:4a:28:19:e1:1c:d7:bb:5c:06:53:89:bc:18:59:
+                    ee:cb:43:ef:b5:5f:9f:c4:cb:a5:4c:33:ae:ac:a0:
+                    59:ab
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Alternative Name:
+                DNS:patches.lan, IP Address:10.10.25.131
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        93:64:71:17:1f:2b:73:42:a7:4f:b0:22:7e:98:8b:33:41:17:
+        8b:5a:5e:43:b5:16:9c:c4:12:e7:a7:91:e2:dd:47:ac:e4:0a:
+        a5:c9:04:be:1d:32:b5:0d:cf:ce:8f:e3:5c:5b:78:66:5d:ac:
+        8d:f4:79:75:ff:9f:b2:ef:4f:b0:0e:2a:22:78:de:4a:68:dd:
+        15:27:f3:3a:df:10:f9:d0:6c:73:fd:7e:dd:f7:be:89:df:e4:
+        2c:e4:87:29:71:d6:8f:be:0e:fa:0e:c8:d6:2e:6a:03:cb:bc:
+        6f:4d:a2:f2:ab:53:5b:a0:fd:52:7d:c8:58:9e:fa:04:95:a9:
+        a5:89:b6:a7:16:c6:94:11:33:3f:65:40:f2:d9:25:51:6a:af:
+        ec:7d:87:72:be:aa:4a:1e:7f:11:5c:7e:cf:60:6f:e7:c8:52:
+        09:9a:59:37:b7:3b:51:cd:29:b2:97:43:85:e4:03:8e:39:5d:
+        47:df:16:a1:3e:13:33:3c:40:ff:6d:a8:40:b0:c4:06:eb:ac:
+        a7:e1:22:79:f8:c4:57:37:81:a9:52:24:55:1c:54:2c:89:3b:
+        1e:49:6a:1e:fb:ee:76:01:c7:ae:39:53:ac:cf:f2:21:c3:ea:
+        60:2e:fe:8c:13:10:d8:fc:36:9f:ec:96:71:80:9d:c1:d2:b5:
+        2a:e0:54:5f:30:4d:4e:aa:fc:be:56:cd:f3:03:26:7e:18:76:
+        a5:30:13:0c:83:a7:b8:fe:45:11:b7:7c:51:87:a7:3a:5f:01:
+        b9:9e:06:a1:48:3d:b6:66:f5:15:e9:72:0f:86:26:35:33:66:
+        6a:60:b4:6a:2f:1d:bb:34:e4:0f:cc:d9:9c:86:66:b8:84:25:
+        db:9e:f9:ef:7c:41:1c:d8:90:ba:48:34:14:39:d8:ba:24:e0:
+        84:bd:33:11:47:52:a9:9a:4f:99:d6:1e:f4:a8:95:f3:5e:47:
+        b3:ef:45:a6:8e:c8:af:22:ea:cd:1d:f3:50:7a:c9:4d:b2:94:
+        47:e8:b5:ac:e5:0f:10:a8:f5:9e:5c:6e:8e:05:d0:56:0b:85:
+        a8:56:a5:10:bc:8e:7d:97:8f:4f:dd:dd:de:72:2c:fc:bf:6e:
+        25:12:7f:2e:79:34:9d:1d:f3:94:89:a0:22:2b:cb:4f:d2:dd:
+        b7:ad:19:17:77:a0:f9:15:20:8f:3a:82:91:41:40:be:9f:38:
+        a5:7c:51:93:92:f6:5d:fe:ee:5d:2d:9a:77:af:ed:2b:8f:30:
+        ab:c8:a6:1f:04:bc:4e:e4:fd:f2:27:de:dd:47:8d:bc:37:40:
+        1a:55:73:c4:25:de:a2:30:47:c4:fb:af:82:b6:a1:78:12:8e:
+        38:42:94:51:b3:5e:d6:87

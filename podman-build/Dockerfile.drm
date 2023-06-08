@@ -1,0 +1,19 @@
+FROM fedora:rawhide as builder
+
+ARG DRM_URL
+
+WORKDIR /tmp
+
+COPY podman-build/drm_install.exp /tmp
+RUN mkdir -p /patches
+RUN mkdir -p /patches/drm_export/
+RUN mkdir -p /patches/drm_download/
+COPY podman-build/drm_run.sh /patches/drm_run.sh
+RUN dnf update -y && dnf install -y expect wget hostname systemd
+RUN wget ${DRM_URL}
+RUN expect ./drm_install.exp
+RUN chown -R drmuser: /patches
+RUN chmod +x /patches/drm_run.sh
+
+# Run a lightweight command to keep the container running indefinitely
+CMD ["/bin/bash", "/patches/drm_run.sh"]

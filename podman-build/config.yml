@@ -1,0 +1,179 @@
+################################################################################
+# PostgreSQL Settings                                                          #
+################################################################################
+
+# These are the username and password for the backend PSQL database used to store Patches metadata
+PSQL_USERNAME: "patches"
+PSQL_PASSWORD: "password"
+
+# The name of the Patches administrator. This *MUST* match the common name on the certificate of the administrator.
+PATCHES_ADMINISTRATOR: 
+
+################################################################################
+# Existing RootCA and Patches Server Certificate Configuration                 #
+################################################################################
+# If you already have a CA key and crt you want to provide you can provide     #
+# them in the CERT_DIRECTORY/ROOT_CERT_DIRECTORY. By default, this is          #
+# server_certs/root_certs. The code will search for files with the name        #
+# {ROOT_CA_NAME}.key/{ROOT_CA_NAME}.crt or {ROOT_CA_NAME}.pem. By default      #
+# ROOT_CA_NAME is rootCA                                                       #
+################################################################################
+
+################################################################################
+# New RootCA and Patches Server Certificate Configuration                      #
+################################################################################
+
+# The name you want to use for your root CA. If you want to use an existing root CA, you can use the same name.
+# This name will be parsed into ROOT_CA_NAME.crt and ROOT_CA_NAME.key. Ex rootCA.crt and rootCA.key.
+ROOT_CA_NAME: "rootCA"
+
+# The name you want to use for the certificate/CN for the patches server. This becomes <SERVER_NAME>.<DOMAIN>
+SERVER_NAME: "patches"
+
+# The domain name to use for the certificate
+DOMAIN: "lan"
+
+# The country name for the certificate
+country: "US"
+
+# The state or province name for the certificate
+state: "Ohio"
+
+# The locality name for the certificate
+locality: "Dayton"
+
+# The organization name for the certificate
+organization_name: "Dell"
+
+# The organizational unit name for the certificate
+organization_unit: "Federal"
+
+# How many days the certs should be valid. Default is three years.
+days: 1095
+
+# A list of client names you want to generate certificates for. You can add more as needed.
+# Make sure one of these is the same as PATCHES_ADMINISTRATOR if you are not using your
+# own certificates.
+clients:
+  grant: # The name you want to use for the certificate/CN for the server. 
+         # This will also be assigned to the subject alternative name
+
+    # The domain name to use for the certificate
+    domain: "lan"
+
+    # The country name for the certificate
+    country: "US"
+
+    # The state or province name for the certificate
+    state: "Ohio"
+
+    # The locality name for the certificate
+    locality: "Dayton"
+
+    # The organization name for the certificate
+    organization_name: "Dell"
+
+    # The organizational unit name for the certificate
+    organization_unit: "Federal"
+
+    # The primary DNS name for the server certificate
+    dns_1: "grant.lan"
+
+    # The secondary DNS name for the server certificate (optional)
+    dns_2:
+
+    # The primary IP address for the certificate (optional)
+    ip_1:
+
+    # The secondary IP address for the certificate (optional)
+    ip_2:
+
+    # How many days the certs should be valid. Default is three years.
+    days: 1095
+
+  grace: # The name you want to use for the certificate/CN for the server. 
+         # This will also be assigned to the subject alternative name
+
+    # The domain name to use for the certificate
+    domain: "lan"
+
+    # The country name for the certificate
+    country: "US"
+
+    # The state or province name for the certificate
+    state: "Ohio"
+
+    # The locality name for the certificate
+    locality: "Dayton"
+
+    # The organization name for the certificate
+    organization_name: "Dell"
+
+    # The organizational unit name for the certificate
+    organization_unit: "Federal"
+
+    # The primary DNS name for the server certificate
+    dns_1: "grace.lan"
+
+    # The secondary DNS name for the server certificate (optional)
+    dns_2:
+
+    # The primary IP address for the certificate (optional)
+    ip_1:
+
+    # The secondary IP address for the certificate (optional)
+    ip_2:
+
+    # How many days the certs should be valid. Default is three years.
+    days: 1095
+
+################################################################################
+# Developer Options                                                            #
+################################################################################
+# WARNING: These are meant for developer use. It is likely you will break things 
+# by changing these values. Do not change these unless you know what you are 
+# doing.
+
+# This is the port that Node JS will listen on
+BACKEND_PORT: "9000"
+
+# This is the port the React JS app will listen on.
+FRONTEND_PORT: "3000"
+
+# This is the port for that PostgreSQL will use
+PSQL_PORT: "5432"
+
+# This is the name of the patches database. Changing this will break the code
+# currently
+POSTGRES_DB: "patches"
+
+# The hostname for the backend certificate
+BACKEND_CERT_NAME: "patches-backend"
+
+# The hostname for the frontend certificate
+FRONTEND_CERT_NAME: "frontend"
+
+# This is the PostGreSQL container label. It is used as `docker.io/library/postgres:${PSQL_VERSION}`
+PSQL_VERSION: "15.3"
+
+# This is the HTTPD version we will run
+HTTPD_VERSION: "2.4"
+
+# This is the nginx container label. It is used as `docker.io/library/nginx:${NGINX_VERSION}`
+NGINX_VERSION: "1.23.4"
+
+# The directory to use to store server certificates
+CERT_DIRECTORY: "server_certs"
+ROOT_CERT_DIRECTORY: "root_certs"
+
+# DRM required disk space. Currently set at 80. You better be sure you know what you're doing before lowering this.
+REQUIRED_SPACE: "80"
+
+# This is filled in with the install script. DO NOT edit this manually or it will break things.
+# This value is only used when the user doesn't want to provide any sudo credentials so they run
+# nginx as user and they have to pick a high port.
+NGINX_PORT: 
+
+# There isn't a good way to programmatically get this. DRM is available at
+# https://www.dell.com/support/home/en-us/drivers/DriversDetails?driverid=8GDHG
+DRM_INSTALL_URL: "https://dl.dell.com/FOLDER09359484M/1/DRMInstaller_3.4.3.869.bin"

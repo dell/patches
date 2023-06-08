@@ -15,7 +15,6 @@ class Product extends React.Component {
   };
 
   componentDidMount = () => {
-    console.log("test")
     let { match } = this.props;
     http.get(`/api/systems?id=${match.params.device}`).then((res) => {
       if (res.systems.length === 0) return alert("No system with this ID");
