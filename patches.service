@@ -1,0 +1,23 @@
+[Unit]
+Description=Patches Service
+
+[Service]
+Environment=NODE_ENV=production
+Environment=PORT=9000
+Environment=SERVER_CA=/opt/patches/server/server_cert.pem
+Environment=SERVER_CERT=/opt/patches/server/server_cert.pem
+Environment=SERVER_KEY=/opt/patches/server/server_key.pem
+Environment=DATABASE_URL=root:password@localhost:5432/patches
+Environment=DOWNLOAD_PATH=/opt/patches/download
+Environment=XML_PATH=/opt/patches/xml
+Environment=PARSED_PATH=/opt/patches/xml/parsed
+
+User=root
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/bin/node server
+WorkingDirectory=/opt/patches
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,26 @@
+.admin-tab-links {
+  background: rgba(234, 234, 234, 0.8);
+  display: flex;
+  flex-direction: row;
+  padding-top: 10px;
+  margin-bottom: 30px;
+}
+
+.admin-tab-link {
+  display: block;
+  text-align: center;
+  flex: 1;
+  padding: 19px 0;
+  color: black;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.admin-tab-link-active {
+  background: white;
+  border-top: 2px solid #006bbd;
+}
+
+.admin-tab-content {
+  justify-content: center;
+}

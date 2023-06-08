@@ -1,0 +1,9 @@
+.error-404 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.error-404-title {
+  text-align: center;
+}

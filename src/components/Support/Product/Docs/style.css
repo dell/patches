@@ -1,0 +1,16 @@
+.product-docs {
+  padding: 24px 24px 50px 24px !important;
+  margin: 20px 0;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.product-docs-dropzone {
+  padding: 24px 24px 50px 24px !important;
+  margin: 20px 0;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+  text-align: center;
+}
+
+.product-docs-table {
+  padding: 8px;
+}

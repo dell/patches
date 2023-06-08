@@ -1,0 +1,82 @@
+.user-edit-search {
+    display: flex;
+    margin-bottom: 30px;
+}
+
+.xml-table {
+    margin-top: 15px;
+}
+
+.pagination-shrink {
+    width: 50px;
+}
+
+.pagination-pad-left {
+    margin-left: 15px;
+}
+
+.pagination-align-left {
+    margin-left: 1%;
+}
+
+.component-dl {
+    padding: 0.05rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    border-color: #1a7ac4;
+    color: #1a7ac4;
+    cursor: pointer;
+}
+
+.component-pagination {
+    margin-bottom: 15px;
+    padding: 0.05rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-color: #b83c00;
+    cursor: pointer;
+}
+
+.user-input {
+    padding: 7px;
+    font-size: 15px;
+    font-size: 15px;
+    border-radius: 5px;
+    border: 1px solid lightgray;
+    width: 100%;
+}
+
+.user-search-btn {
+    background-color: #007db8;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.user-edit-header {
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.user-edit-table {
+    justify-content: center;
+    min-width: 400px;
+}
+
+.user-edit-table-row {
+    justify-content: center;
+}
+
+.user-edit-table-header {
+    text-align: center;
+    padding: 10px 0;
+    border-bottom: 1px solid gray;
+}
+
+.user-edit-table-data {
+    padding: 10px 30px 10px 30px;
+}

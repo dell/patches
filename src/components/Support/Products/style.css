@@ -1,0 +1,38 @@
+.products-content {
+  background: white;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #ddd;
+}
+
+.product-nav {
+  display: flex;
+  flex-direction: row;
+  padding-bottom: 15px;
+  font-size: 20px;
+  text-transform: capitalize;
+  border-bottom: 1px solid #ccc;
+}
+
+.product-links {
+  padding: 20px 0;
+}
+
+.component-link {
+  margin-bottom: 25px;
+  font-size: 14px;
+}
+
+.breadcrumb-delim {
+  margin: 0 5px;
+}
+
+.breadcrum-active {
+  color: black;
+}
+
+.error-box {
+  font-size: 32px;
+  display: flex;
+  justify-content: center;
+}
