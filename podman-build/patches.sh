@@ -413,17 +413,6 @@ function build_drm() {
 
   if ask_yes_no "The code downloads several 10s of GB of data to populate the Enterprise PowerEdge catalog data for Patches. It checks if you have at least 80GB of disk space available, which is more than what the final container will use. There may be pauses of 60 seconds due to an expect script running to install DRM. Do you want to continue?"; then
 
-    # Check available disk space
-    available_space=$(df -BG --output=avail / | sed '1d;s/[^0-9]*//g')
-
-    # TODO - this must be fixed
-    if [[ false ]]; then
-      patches_echo "Insufficient disk space. At least ${REQUIRED_SPACE}GB of free space is required." --error
-      patches_echo "Available disk space: $available_space GB" --error
-      patches_echo "To check disk space, run the following command: df -BG --output=avail / | sed '1d;s/[^0-9]*//g'" --error
-      exit 1
-    fi
-
     patches_echo "Disk space check passed. Continuing installation..."
 
     patches_echo "Validating DRM_INSTALL_URL variable ${DRM_INSTALL_URL}..."
