@@ -12,7 +12,7 @@
 # Build stage
 FROM python:3.12.0a7-slim-bullseye AS builder
 
-ARG SCRIPT_DIR
+ARG PYTHON_CONTAINER_DIR
 
 WORKDIR /app
 
@@ -20,23 +20,26 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y build-essential libffi-dev
 
 # Copy files to the working directory
-COPY ${SCRIPT_DIR}/requirements.txt .
+COPY ${PYTHON_CONTAINER_DIR}/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir jinja2
 
 # Production stage
 FROM python:3.12.0a7-slim-bullseye
 
-ARG SCRIPT_DIR
+ARG PYTHON_CONTAINER_DIR
 
 WORKDIR /app
 
 # Copy files from the build stage
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
-COPY ${SCRIPT_DIR}/generate_certificates.py .
-COPY ${SCRIPT_DIR}/generate_certificates_entrypoint.sh .
-COPY ${SCRIPT_DIR}/configure_nginx.py .
-COPY ${SCRIPT_DIR}/configure_nginx_entrypoint.sh .
+COPY ${PYTHON_CONTAINER_DIR}/generate_certificates.py .
+COPY ${PYTHON_CONTAINER_DIR}/generate_certificates_entrypoint.sh .
+COPY ${PYTHON_CONTAINER_DIR}/configure_nginx.py .
+COPY ${PYTHON_CONTAINER_DIR}/configure_nginx_entrypoint.sh .
+COPY ${PYTHON_CONTAINER_DIR}/import_keys.py .
+COPY ${PYTHON_CONTAINER_DIR}/import_keys_entrypoint.sh .
 
 RUN chmod +x ./generate_certificates_entrypoint.sh
 RUN chmod +x ./configure_nginx_entrypoint.sh
+RUN chmod +x ./import_keys_entrypoint.sh

@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 import textwrap
 import time
@@ -17,165 +16,10 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509 import Certificate
 from cryptography.x509.oid import NameOID
+from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger
 
-
-class PatchesLogHandler(logging.Handler):
-    """Custom log handler for Patches scripts.
-
-    This log handler customizes the log message formatting and output to match
-    the text style of the `patches_echo` function in Bash, including colored
-    output, timestamp, and 80-character separators.
-
-    Attributes:
-        None
-    """
-
-    def emit(self, record):
-        """Emit a log record.
-
-        This method overrides the `emit` method of the `logging.Handler` class
-        to customize the log message formatting and output.
-
-        Args:
-            record (logging.LogRecord): The log record to be emitted.
-
-        Returns:
-            None
-        """
-        message = self.format(record)
-        level = record.levelname.lower()
-        if level == 'error' or level == 'warning':
-            color = '\033[1;31m'  # Red color
-        else:
-            color = '\033[1;33m'  # Yellow color
-        reset_color = '\033[0m'  # Reset color
-
-        # Print first line of 80 #
-        print('#' * 80)
-
-        # Format the timestamp
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(record.created))
-
-        # Determine the available width for the log message (80 - length of timestamp)
-        available_width = 80 - len(timestamp) - 3  # Subtract 3 for timestamp formatting (space, dash, space)
-
-        # Wrap the log message to available width at the nearest word boundary
-        wrapped_message = textwrap.fill(message, width=available_width, break_long_words=False)
-
-        # Print timestamp and modified message in the desired color
-        print(f'{timestamp} - {color}{wrapped_message}{reset_color}')
-
-        # Print last line of 80 #
-        print('#' * 80)
-
-
-# Set up logging with the custom log handler
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
-logger.handlers.clear()
-handler = PatchesLogHandler()
-handler.setFormatter(logging.Formatter('%(message)s'))
-logger.addHandler(handler)
-
-
-def patches_read(prompt):
-    """Custom read command for Patches scripts.
-    
-    Prompts the user for input and sets the text color to a bold blue.
-    
-    Args:
-        prompt (str): The prompt message to display to the user.
-    
-    Returns:
-        str: The user input.
-    """
-    color = '\033[1;34m'  # Bold blue color
-    reset_color = '\033[0m'  # Reset color
-
-    # Print first line of 80 #
-    print('#' * 80)
-
-    # Wrap the prompt at 80 characters
-    wrapped_prompt = ""
-    line_length = 0
-    words = prompt.split()
-    for word in words:
-        if line_length + len(word) > 80:
-            wrapped_prompt += '\n' + word
-            line_length = len(word)
-        else:
-            if line_length > 0:
-                wrapped_prompt += ' ' + word
-                line_length += len(word) + 1
-            else:
-                wrapped_prompt += word
-                line_length = len(word)
-
-    # Print prompt message
-    print(f'{color}{wrapped_prompt}{reset_color}')
-
-    # Print last line of 80 #
-    print('#' * 80)
-
-    # Read user input
-    user_input = input()
-
-    return user_input
-
-
-def combine_keys_to_pem(private_key: rsa.RSAPrivateKey, certificate: Certificate) -> bytes:
-    """
-    Combines a private key and public certificate into a single PEM file.
-
-    Args:
-        private_key (rsa.RSAPrivateKey): The private key in cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey
-                                         format.
-        certificate (Certificate): The public certificate in Certificate format.
-
-    Returns:
-        bytes: The combined private and public keys in PEM format.
-    """
-    private_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
-    public_bytes = certificate.public_bytes(
-        encoding=serialization.Encoding.PEM
-    )
-
-    pem = public_bytes + private_bytes
-
-    return pem
-
-
-def generate_pkcs12_certificate(name: str, private_key: rsa.RSAPrivateKey, certificate: Certificate,
-                                root_certificate: Certificate, password: Optional[str] = None) -> bytes:
-    """
-    Converts the provided RSA private key, X.509 certificate, and root certificate to PKCS#12 format.
-
-    Args:
-        name (str): The human-readable name for the certificate.
-        private_key (rsa.RSAPrivateKey): The RSA private key.
-        certificate (Certificate): The X.509 certificate.
-        root_certificate (Certificate): The root certificate.
-        password (str, optional): The password for the PKCS#12 certificate. Default is None.
-
-    Returns:
-        bytes: The PKCS#12 certificate.
-    """
-    # Convert private key and certificate to PKCS#12 format
-    pkcs12_data = pkcs12.serialize_key_and_certificates(
-        name=name.encode('utf-8'),
-        key=private_key,
-        cert=certificate,
-        cas=[root_certificate],
-        encryption_algorithm=serialization.BestAvailableEncryption(password.encode()) if password else serialization.NoEncryption(),
-    )
-
-    return pkcs12_data
-
+# Get the logger instance
+logger = PatchesLogger.get_logger()
 
 def create_root_ca(country, state, locality, organization_name, root_ca_name, root_cert_directory):
     """Creates a new root Certificate Authority (CA) and private key.
@@ -197,12 +41,12 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
 
     if not os.path.exists(root_cert_directory):
         os.makedirs(root_cert_directory)
-        logging.info(f"Created directory: {os.path.abspath(root_cert_directory)}")
+        logger.info(f"Created directory: {os.path.abspath(root_cert_directory)}")
     else:
-        logging.info(f"Directory already exists: {os.path.abspath(root_cert_directory)}")
+        logger.info(f"Directory already exists: {os.path.abspath(root_cert_directory)}")
 
     # Check if key, certificate, or PEM files already exist
-    logging.info("Checking if key, certificate, or PEM files already exist")
+    logger.info("Checking if key, certificate, or PEM files already exist")
     key_file = os.path.join(root_cert_directory, f'{root_ca_name}.key')
     crt_file = os.path.join(root_cert_directory, f'{root_ca_name}.crt')
     pem_file = os.path.join(root_cert_directory, f'{root_ca_name}.pem')
@@ -214,22 +58,22 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
                                        f"instead of creating new certificates? (yes/no): ")
             if use_existing_files.lower() == 'yes':
                 # Load key and certificate files
-                logging.info('Reading existing root CA certificate and private key...')
+                logger.info('Reading existing root CA certificate and private key...')
                 try:
                     with open(crt_file, 'rb') as f:
                         root_cert = x509.load_pem_x509_certificate(f.read(), default_backend())
                     with open(key_file, 'rb') as f:
                         root_private_key = serialization.load_pem_private_key(f.read(), password=None,
                                                                               backend=default_backend())
-                    logging.info('CA cert and key loaded successfully.')
+                    logger.info('CA cert and key loaded successfully.')
                     return root_private_key, root_cert
                 except Exception as e:
-                    logging.error(f"Error loading root CA certificate or private key: {e}")
+                    logger.error(f"Error loading root CA certificate or private key: {e}")
                     return None
             elif use_existing_files.lower() == 'no':
                 break
             else:
-                logging.info('Please enter "yes" or "no".')
+                logger.info('Please enter "yes" or "no".')
 
     elif os.path.isfile(pem_file):
         while True:
@@ -237,20 +81,20 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
                                  f"that file instead of creating a new certificate? (yes/no): ")
             if use_existing.lower() == "yes":
                 # Load PEM file
-                logging.info('Reading existing root CA certificate in PEM format...')
+                logger.info('Reading existing root CA certificate in PEM format...')
                 try:
                     with open(pem_file, 'rb') as f:
                         root_cert = x509.load_pem_x509_certificate(f.read(), default_backend())
                     root_private_key = None
-                    logging.info('CA cert loaded successfully.')
+                    logger.info('CA cert loaded successfully.')
                     return root_private_key, root_cert
                 except Exception as e:
-                    logging.error(f"Error loading root CA certificate: {e}")
+                    logger.error(f"Error loading root CA certificate: {e}")
                     return None
             elif use_existing.lower() == "no":
                 break
             else:
-                logging.info("Invalid input. Please enter 'yes' or 'no'")
+                logger.info("Invalid input. Please enter 'yes' or 'no'")
     else:
         patches_read(
             f"No root certificates in pem or key/crt format found (expects lowercase .pem or .key/crt). In "
@@ -261,14 +105,14 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
             f"continue.")
 
     # Generate private key
-    logging.info("Generating private key")
+    logger.info("Generating private key")
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=4096,
     )
 
     # Create and sign the root certificate
-    logging.info("Creating and signing the root certificate")
+    logger.info("Creating and signing the root certificate")
     subject = issuer = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, country),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, state),
@@ -291,7 +135,7 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
     )
 
     # Write the key and certificate to files
-    logging.info("Writing the key and certificate to files")
+    logger.info("Writing the key and certificate to files")
     with open(key_file, 'wb') as f:
         f.write(private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
@@ -301,7 +145,7 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
     with open(crt_file, 'wb') as f:
         f.write(public_key.public_bytes(serialization.Encoding.PEM))
 
-    logging.info("Concatenating the public and private keys into a single PEM file")
+    logger.info("Concatenating the public and private keys into a single PEM file")
     pem = combine_keys_to_pem(private_key, public_key)
     with open(os.path.join(root_cert_directory, f"{root_ca_name}.pem"), "wb") as f:
         f.write(pem)
@@ -349,9 +193,9 @@ def create_ssl_cert(
         None
     """
 
-    logging.info(f"Processing {dns_1}...")
+    logger.info(f"Processing {dns_1}...")
 
-    logging.info("Creating private key...")
+    logger.info("Creating private key...")
 
     # Generate an RSA key
     private_key = rsa.generate_private_key(
@@ -367,15 +211,15 @@ def create_ssl_cert(
             encryption_algorithm=serialization.NoEncryption(),
         ))
 
-    logging.info("Created the private key")
+    logger.info("Created the private key")
 
-    logging.info("Creating CSR...")
+    logger.info("Creating CSR...")
 
     # Create a new CSR object
     csr_builder = x509.CertificateSigningRequestBuilder()
 
     # Set the subject name of the CSR
-    logging.info("Setting CSR subject name...")
+    logger.info("Setting CSR subject name...")
     csr_builder = csr_builder.subject_name(x509.Name([
         x509.NameAttribute(x509.NameOID.COUNTRY_NAME, country),
         x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, state),
@@ -386,7 +230,7 @@ def create_ssl_cert(
     ]))
 
     # Set the extensions of the CSR
-    logging.info("Setting CSR extensions...")
+    logger.info("Setting CSR extensions...")
     names = []
     if dns_1 is not None:
         names.append(x509.DNSName(dns_1))
@@ -403,19 +247,19 @@ def create_ssl_cert(
         )
 
     # Sign the CSR using the private key
-    logging.info("Signing the CSR using the private key...")
+    logger.info("Signing the CSR using the private key...")
     csr = csr_builder.sign(private_key, hashes.SHA256(), default_backend())
 
     # Write the CSR to the file
-    logging.info("Writing the CSR to the file...")
+    logger.info("Writing the CSR to the file...")
     # Replace *. to take care of the wildcard for the certificate generation
     with open(os.path.join(cert_directory, f"{host_name.replace('*.', '')}.csr"), 'wb') as f:
         f.write(csr.public_bytes(serialization.Encoding.PEM))
 
-    logging.info(f"Created CSR at {os.path.join(cert_directory, f'{host_name}.csr')}")
+    logger.info(f"Created CSR at {os.path.join(cert_directory, f'{host_name}.csr')}")
 
     # Create the certificate by signing the CSR with the root certificate
-    logging.info("Creating the cert.conf file...")
+    logger.info("Creating the cert.conf file...")
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(csr.subject)
     builder = builder.issuer_name(root_cert.subject)
@@ -453,7 +297,7 @@ def create_ssl_cert(
     if password:
         password = getpass(f"Enter the PKCS#12 password you want to use for the host {host_name}: ")
 
-    logging.info("Writing the key to PKCS#12 because Firefox/Chrome do not support both cert/key in the same file"
+    logger.info("Writing the key to PKCS#12 because Firefox/Chrome do not support both cert/key in the same file"
                  " with PEM.")
     pkcs12_cert = generate_pkcs12_certificate(f"{host_name.replace('*.', '')}", private_key, public_key, root_cert,
                                               password)
@@ -479,18 +323,18 @@ ipv4_address = args.ipv4_address
 
 yaml_data = None
 
-with open('config.yml', 'r') as stream:
+with open('../config.yml', 'r') as stream:
     try:
         yaml_data = yaml.safe_load(stream)
     except yaml.YAMLError as exc:
-        logging.error(exc)
+        logger.error(exc)
 
-logging.info("Creating the certificate directory.")
+logger.info("Creating the certificate directory.")
 if not os.path.exists(yaml_data['CERT_DIRECTORY']):
     os.makedirs(yaml_data['CERT_DIRECTORY'])
-    logging.info(f"Created directory: {os.path.abspath(yaml_data['CERT_DIRECTORY'])}")
+    logger.info(f"Created directory: {os.path.abspath(yaml_data['CERT_DIRECTORY'])}")
 else:
-    logging.info(f"Directory already exists: {os.path.abspath(yaml_data['CERT_DIRECTORY'])}")
+    logger.info(f"Directory already exists: {os.path.abspath(yaml_data['CERT_DIRECTORY'])}")
 
 root_key, root_crt = create_root_ca(country=yaml_data['country'],
                                     state=yaml_data['state'],
@@ -499,7 +343,7 @@ root_key, root_crt = create_root_ca(country=yaml_data['country'],
                                     organization_name=yaml_data['organization_name'],
                                     root_cert_directory=os.path.join(certs_directory, root_certs_directory))
 
-logging.info("Creating the patches server certificate. This will be assigned to the nginx proxy...")
+logger.info("Creating the patches server certificate. This will be assigned to the nginx proxy...")
 
 create_ssl_cert(
     root_private_key=root_key,
@@ -517,7 +361,7 @@ create_ssl_cert(
     ip_2=None,
     days=yaml_data['days'])
 
-logging.info("Creating the patches backend certificate...")
+logger.info("Creating the patches backend certificate...")
 
 create_ssl_cert(
     root_private_key=root_key,
@@ -535,7 +379,7 @@ create_ssl_cert(
     ip_2=None,
     days=yaml_data['days'])
 
-logging.info("Creating the patches frontend certificate...")
+logger.info("Creating the patches frontend certificate...")
 
 create_ssl_cert(
     root_private_key=root_key,
@@ -574,13 +418,13 @@ for client in yaml_data['clients']:
         try:
             ip_address_1 = IPv4Address(yaml_data['clients'][client]['ip_1'])
         except ValueError as error:
-            logging.error(f"Invalid IP address format for {client} ip_1: {error}")
+            logger.error(f"Invalid IP address format for {client} ip_1: {error}")
 
     if yaml_data['clients'][client]['ip_2'] is not None:
         try:
             ip_address_2 = IPv4Address(yaml_data['clients'][client]['ip_2'])
         except ValueError as error:
-            logging.error(f"Invalid IP address format for {client} ip_2: {error}")
+            logger.error(f"Invalid IP address format for {client} ip_2: {error}")
 
     create_ssl_cert(
         root_private_key=root_key,

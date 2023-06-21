@@ -157,8 +157,6 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 
 ![](images/2023-06-08-13-12-19.png)
 
-12. 
-
 ## Admin Panel
 
 The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. You can also add additional admin users with `bash <path_to_patches>/podman-build/patches.sh add-admin <username>`
@@ -190,8 +188,6 @@ The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. Yo
 8. After you add the baseline it will automatically run, but you can also check compliance by clicking the check box next to the baseline and selecting check compliance
 
 ![](images/2023-06-21-10-58-12.png)
-
-
 
 ## How We Version
 

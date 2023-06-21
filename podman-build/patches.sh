@@ -950,8 +950,8 @@ function patches_build() {
   podman build \
     --tag dell/patches-python:latest \
     --squash-all \
-    -f ${SCRIPT_DIR}/Dockerfile.python \
-    --build-arg "SCRIPT_DIR=podman-build" \
+    -f ${SCRIPT_DIR}/python_container/Dockerfile.python \
+    --build-arg "PYTHON_CONTAINER_DIR=podman-build/python_container" \
     ${TOP_DIR}
   
   podman build \
@@ -1520,9 +1520,6 @@ EOF
 
   import-keys)
 
-    patches_echo "This functionality is not yet complete. You will have to manually convert certs to PEM format and import them." --error
-    exit 1
-
     if [[ "$#" -lt 2 ]]; then
       patches_echo "Error: import-keys command requires at least two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
       exit 1
@@ -1556,7 +1553,6 @@ EOF
       patches_echo "Extracting common names..."
 
       # Extract the common names from the certificates
-      # TODO - this could be optimized and should at some point be ported to Python
       root_ca_common_name=$(openssl x509 -in "$root_ca_pem_file" -noout -text | sed -n '/Issuer:.*CN *= *\([^[:space:]]*\).*/{ s//\1/; s/^\s*//; s/\s*$//; p; q; }')
       server_common_name=$(openssl x509 -in "$server_cert_file" -noout -subject | sed -n 's/.*CN = \([^[:space:]]*\).*/\1/p')
 
