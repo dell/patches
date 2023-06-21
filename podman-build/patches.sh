@@ -1535,47 +1535,6 @@ EOF
 
       mv "${root_ca_public_key}" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
       mv "${server_key}" "${TOP_DIR}/${CERT_DIRECTORY}"
-    else
-
-      pkcs_file="$1"
-
-      patches_echo "Received input in PKCS format, converting to PEM..."
-
-      # Extract the root CA public key and server key from the PKCS file
-      root_ca_pem_file=$(mktemp)
-      server_cert_file=$(mktemp)
-      server_key_file=$(mktemp)
-
-      openssl pkcs12 -in "$pkcs_file" -nokeys -clcerts -passin pass: | openssl x509 > "$root_ca_pem_file"
-      openssl pkcs12 -in "$pkcs_file" -nokeys -clcerts -passin pass: > "$server_cert_file"
-      openssl pkcs12 -in "$pkcs_file" -nodes -nocerts -passin pass: > "$server_key_file"
-
-      patches_echo "Extracting common names..."
-
-      # Extract the common names from the certificates
-      root_ca_common_name=$(openssl x509 -in "$root_ca_pem_file" -noout -text | sed -n '/Issuer:.*CN *= *\([^[:space:]]*\).*/{ s//\1/; s/^\s*//; s/\s*$//; p; q; }')
-      server_common_name=$(openssl x509 -in "$server_cert_file" -noout -subject | sed -n 's/.*CN = \([^[:space:]]*\).*/\1/p')
-
-      patches_echo "Root CA Common Name: $root_ca_common_name"
-      patches_echo "Server Common Name: $server_common_name"
-
-      patches_echo "Getting server's key and crt files..."
-
-      # Save the root CA public key and server certificate as separate PEM files
-      mv "$root_ca_pem_file" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${root_ca_common_name}.pem"
-      mv "$server_cert_file" "${TOP_DIR}/${CERT_DIRECTORY}/${server_common_name}.crt"
-      mv "$server_key_file" "${TOP_DIR}/${CERT_DIRECTORY}/${server_common_name}.key"
-
-      # Create a PEM file containing the server's certificate and private key
-      server_pem_file="${TOP_DIR}/${CERT_DIRECTORY}/${server_common_name}.pem"
-      cat "${TOP_DIR}/${CERT_DIRECTORY}/${server_common_name}.crt" "${TOP_DIR}/${CERT_DIRECTORY}/${server_common_name}.key" > "$server_pem_file"
-
-      patches_echo "Passing ${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${root_ca_common_name}.pem and ${server_pem_file}"
-
-      validate_server_cert "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${root_ca_common_name}.pem" "$server_pem_file"
-
-      # Cleanup temporary files
-      rm -f "${server_key_file}" "${server_cert_file}" "${root_ca_pem_file}"
     fi
 
     ;;

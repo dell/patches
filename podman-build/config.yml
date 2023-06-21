@@ -24,7 +24,8 @@ PATCHES_ADMINISTRATOR:
 ################################################################################
 
 # The name you want to use for your root CA. If you want to use an existing root CA, you can use the same name.
-# This name will be parsed into ROOT_CA_NAME.crt and ROOT_CA_NAME.key. Ex rootCA.crt and rootCA.key.
+# This name will be parsed into ROOT_CA_NAME.crt and ROOT_CA_NAME.key. Ex rootCA.crt and rootCA.key. If this is a chain
+# of trust, this should be the next level CA above the server.
 ROOT_CA_NAME: "rootCA"
 
 # The name you want to use for the certificate/CN for the patches server. This becomes <SERVER_NAME>.<DOMAIN>

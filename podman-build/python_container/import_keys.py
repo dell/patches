@@ -2,14 +2,14 @@ import argparse
 import os
 from sys import exit
 
-from helper_functions import PatchesLogger, patches_read
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric import padding
 import yaml
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import pkcs12
+
 from helper_functions import PatchesLogger, ask_yes_no
 
 logger = PatchesLogger.get_logger()
@@ -135,7 +135,7 @@ def verify_certificate_common_name(certificate_file, config_field_name):
         common_name = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
 
         # Load config.yml
-        with open("config.yml", "r") as file:
+        with open("config.yml", "r") as file:  # TODO - revert this
             config_data = yaml.safe_load(file)
 
         config_value = config_data.get(config_field_name)
@@ -159,14 +159,14 @@ def verify_certificate_common_name(certificate_file, config_field_name):
         exit(1)
 
 
-def update_config_field(field_name, new_value):
-    """Update a field in config.yml.
+def update_config_field(config_field_name, new_value):
+    """Update the specified field in config.yml with the new value.
 
     This function loads the config.yml file, finds the specified field,
-    and updates it with the new_value.
+    and updates it with the new value.
 
     Args:
-        field_name (str): The name of the field to update.
+        config_field_name (str): The name of the field to update.
         new_value (str): The new value for the field.
 
     Returns:
@@ -174,33 +174,118 @@ def update_config_field(field_name, new_value):
     """
     try:
         with open("config.yml", "r") as file:
-            config_data = yaml.safe_load(file)
-
-        config_data[field_name] = new_value
+            lines = file.readlines()
 
         with open("config.yml", "w") as file:
-            yaml.dump(config_data, file, default_flow_style=False)
+            for line in lines:
+                if line.strip().startswith(config_field_name + ":"):
+                    file.write(f"{config_field_name}: {new_value}\n")
+                else:
+                    file.write(line)
 
-        logger.info(f"{field_name} field updated in config.yml.")
+        logger.info(f"{config_field_name} field updated in config.yml.")
         return True
     except FileNotFoundError:
         logger.error("config.yml file not found.")
-        exit(1)
+        return False
     except Exception as e:
         logger.error(f"Error occurred while updating config.yml: {str(e)}")
-        exit(1)
+        return False
+
+
+def convert_pkcs_to_pem(pkcs_file, server_pem_folder, root_ca_pem_folder, password=None):
+    """Convert a PKCS file to separate PEM files.
+
+    This function takes a PKCS file and converts it into two separate PEM files:
+    one containing the server's private and public certificate, and the other
+    containing the root CA's public certificate. The PEM files are saved in the
+    provided server PEM folder and root CA PEM folder, respectively, using the
+    common names as file names.
+
+    Args:
+        pkcs_file (str): The path to the PKCS file.
+        server_pem_folder (str): The folder path to save the server PEM file.
+        root_ca_pem_folder (str): The folder path to save the root CA PEM file.
+        password (str, optional): The password for the PKCS file. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing the paths to the server PEM file and the root CA PEM file.
+    """
+    with open(pkcs_file, "rb") as file:
+        pkcs_data = file.read()
+
+    # Deserialize PKCS file
+    logger.info("Deserializing PKCS file...")
+    pkcs12_data = pkcs12.load_key_and_certificates(pkcs_data, password)
+
+    # Extract common names
+    logger.info("Extracting common names from the server cert and root cert...")
+    common_name_server = pkcs12_data[1].subject.get_attributes_for_oid(
+        pkcs12.x509.NameOID.COMMON_NAME)[0].value
+
+    # Get the common name of the first CA in the chain
+    common_name_root_ca = pkcs12_data[2][0].subject.get_attributes_for_oid(
+        pkcs12.x509.NameOID.COMMON_NAME)[0].value
+
+    if len(pkcs12_data[2]) > 1:
+        logger.warning(f"There were multiple CA certs in the certificate chain for ${common_name_server}. We are using "
+                       f"the first certificate in the chain ${common_name_root_ca}.")
+
+    # Generate file paths with common names
+    server_pem_file = os.path.join(server_pem_folder, f"{common_name_server}.pem")
+    root_ca_pem_file = os.path.join(root_ca_pem_folder, f"{common_name_root_ca}.pem")
+
+    # Export server's certificate (private and public) to PEM
+    logger.info("Exporting certificates to PEM format...")
+    server_pem = pkcs12_data[0].private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ) + pkcs12_data[1].public_bytes(encoding=serialization.Encoding.PEM)
+
+    # Export root CA's certificate to PEM
+    root_ca_pem = pkcs12_data[2][0].public_bytes(encoding=serialization.Encoding.PEM)
+
+    # Write server's PEM file
+    with open(server_pem_file, "wb") as file:
+        file.write(server_pem)
+
+    # Write root CA's PEM file
+    with open(root_ca_pem_file, "wb") as file:
+        file.write(root_ca_pem)
+
+    return server_pem_file, root_ca_pem_file
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Verify PEM certificate files.')  # TODO - update
-    parser.add_argument('server_pem_file', type=str, help='Path to the server PEM certificate file')
-    parser.add_argument('root_ca_pem_file', type=str, help='Path to the ROOT_CA PEM certificate file')
+    parser = argparse.ArgumentParser(description='Import certificates into Patches.')
+    parser.add_argument('--server-pem-file', dest='server_pem_file', type=str,
+                        help='Path to the server PEM certificate file')
+    parser.add_argument('--root-ca-pem-file', dest='root_ca_pem_file', type=str,
+                        help='Path to the ROOT_CA PEM certificate file')
+    parser.add_argument('--pkcs-file', type=str,
+                        help='Path to the PEM certificate file containing server cert and trust chain')
+    parser.add_argument('--root-cert-directory', dest='root_cert_directory', type=str,
+                        help='Directory path holding the root certificates')
+    parser.add_argument('--cert-directory', dest='cert_directory', type=str,
+                        help='Directory path holding the regular server certificates')
 
     # Parse command-line arguments
     args = parser.parse_args()
+
+    if (args.pkcs_file is None and (args.server_pem_file is None or args.root_ca_pem_file is None)) or \
+            (args.pkcs_file is not None and (args.server_pem_file is not None or args.root_ca_pem_file is not None)):
+        parser.error('Either provide --pkcs-file or both --server-pem-file and --root-ca-pem-file arguments.')
+        exit(1)
+
+    root_cert_directory = args.root_cert_directory
+    cert_directory = args.cert_directory
     server_pem_file = args.server_pem_file
     root_ca_pem_file = args.root_ca_pem_file
+
+    if args.pkcs_file:
+        server_pem_file, root_ca_pem_file = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory)
 
     # Verify the PEM files
     logger.info("Verify both files are in PEM format...")
@@ -209,7 +294,8 @@ if __name__ == '__main__':
     if result:
         logger.info("Both PEM files are valid.")
     else:
-        logger.error("At least one PEM file is invalid.")  # TODO - update
+        logger.error("The PEM files did not validate correctly.")
+        exit(1)
 
     logger.info("Validate that the server cert is signed by the root CA cert...")
 
