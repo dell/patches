@@ -1,7 +1,5 @@
 import argparse
 import os
-import textwrap
-import time
 from datetime import datetime, timedelta
 from getpass import getpass
 from ipaddress import IPv4Address
@@ -13,9 +11,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509 import Certificate
 from cryptography.x509.oid import NameOID
+
 from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger
 
 # Get the logger instance

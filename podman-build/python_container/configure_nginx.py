@@ -10,8 +10,9 @@ The following environment variables are used:
 - SCRIPT_DIR: the directory in which to write the resulting Nginx configuration file
 """
 
-import os
 import argparse
+import os
+
 from jinja2 import Environment, FileSystemLoader
 
 # Set up argument parser

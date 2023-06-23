@@ -15,7 +15,7 @@ from helper_functions import PatchesLogger, ask_yes_no
 logger = PatchesLogger.get_logger()
 
 
-def verify_pem_files(server_pem_file, root_ca_pem_file):
+def verify_pem_files(server_pem_file, root_ca_pem_files):
     """Verify if the given files are valid PEM certificate files.
 
     This function checks if the provided files are valid PEM certificate files.
@@ -23,10 +23,10 @@ def verify_pem_files(server_pem_file, root_ca_pem_file):
 
     Args:
         server_pem_file (str): The path to the server PEM certificate file.
-        root_ca_pem_file (str): The path to the ROOT_CA PEM certificate file.
+        root_ca_pem_files (list): A list of paths to the ROOT_CA PEM certificate files.
 
     Returns:
-        bool: True if both files are valid PEM certificate files, False otherwise.
+        bool: True if all files are valid PEM certificate files, False otherwise.
     """
     try:
         # Verify server PEM file
@@ -43,19 +43,20 @@ def verify_pem_files(server_pem_file, root_ca_pem_file):
                 logger.error(f"Invalid server PEM file: {server_pem_file} - {str(e)}")
                 return False
 
-        # Verify root CA PEM file
-        if not os.path.isfile(root_ca_pem_file):
-            logger.error(f"File not found: {root_ca_pem_file}")
-            return False
-
-        with open(root_ca_pem_file, 'rb') as file:
-            pem_data = file.read()
-            try:
-                x509.load_pem_x509_certificate(pem_data, default_backend())
-                # Additional checks or validations can be performed on the certificate object if needed
-            except Exception as e:
-                logger.error(f"Invalid ROOT_CA PEM file: {root_ca_pem_file} - {str(e)}")
+        # Verify root CA PEM files
+        for root_ca_pem_file in root_ca_pem_files:
+            if not os.path.isfile(root_ca_pem_file):
+                logger.error(f"File not found: {root_ca_pem_file}")
                 return False
+
+            with open(root_ca_pem_file, 'rb') as file:
+                pem_data = file.read()
+                try:
+                    x509.load_pem_x509_certificate(pem_data, default_backend())
+                    # Additional checks or validations can be performed on the certificate object if needed
+                except Exception as e:
+                    logger.error(f"Invalid ROOT_CA PEM file: {root_ca_pem_file} - {str(e)}")
+                    return False
 
         return True
 
@@ -64,18 +65,19 @@ def verify_pem_files(server_pem_file, root_ca_pem_file):
         exit(1)
 
 
-def validate_server_cert(server_cert_file, root_ca_cert_file):
-    """Validate server's PEM file against the root CA cert.
+def validate_server_cert(server_cert_file, root_ca_cert_files):
+    """Validate server's PEM file against the root CA certs.
 
     This function validates if the server certificate in the provided PEM file
-    has been signed by the root CA certificate.
+    has been signed by any one of the root CA certificates.
 
     Args:
         server_cert_file (str): Path to the server's PEM certificate file.
-        root_ca_cert_file (str): Path to the root CA PEM certificate file.
+        root_ca_cert_files (list): List of paths to root CA PEM certificate files.
 
     Returns:
-        bool: True if the server's PEM file is signed by the root CA cert, False otherwise.
+        str: File path of the root CA certificate that signed the server certificate,
+             or an empty string if no match is found.
     """
     try:
         # Load server certificate
@@ -83,24 +85,36 @@ def validate_server_cert(server_cert_file, root_ca_cert_file):
             server_cert_data = file.read()
             server_cert = x509.load_pem_x509_certificate(server_cert_data, default_backend())
 
-        # Load root CA certificate
-        with open(root_ca_cert_file, 'rb') as file:
-            root_ca_cert_data = file.read()
-            root_ca_cert = x509.load_pem_x509_certificate(root_ca_cert_data, default_backend())
+        for root_ca_cert_file in root_ca_cert_files:
+            # Load root CA certificate
+            with open(root_ca_cert_file, 'rb') as file:
+                root_ca_cert_data = file.read()
+                root_ca_cert = x509.load_pem_x509_certificate(root_ca_cert_data, default_backend())
 
-        # Validate server certificate against the root CA certificate
-        try:
-            root_ca_cert.public_key().verify(
-                server_cert.signature,
-                server_cert.tbs_certificate_bytes,
-                padding.PKCS1v15(),
-                server_cert.signature_hash_algorithm,
-            )
-        except InvalidSignature:
-            logger.error("The server's PEM file is not signed by the provided root CA cert.")
-            return False
+            # Validate server certificate against the root CA certificate
+            try:
+                root_ca_cert.public_key().verify(
+                    server_cert.signature,
+                    server_cert.tbs_certificate_bytes,
+                    padding.PKCS1v15(),
+                    server_cert.signature_hash_algorithm,
+                )
+            except InvalidSignature:
+                continue  # Try the next root CA cert
 
-        return True
+            logger.info(f"The server's PEM file is signed by the root CA cert: {root_ca_cert_file}")
+            return root_ca_cert_file
+
+        logger.error("The server's PEM file is not signed by any of the provided root CA certs.")
+        return ""
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e.filename}")
+        exit(1)
+    except Exception as e:
+        logger.error(f"Validation error: {str(e)}")
+        exit(1)
+
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e.filename}")
@@ -223,38 +237,33 @@ def convert_pkcs_to_pem(pkcs_file, server_pem_folder, root_ca_pem_folder, passwo
     common_name_server = pkcs12_data[1].subject.get_attributes_for_oid(
         pkcs12.x509.NameOID.COMMON_NAME)[0].value
 
-    # Get the common name of the first CA in the chain
-    common_name_root_ca = pkcs12_data[2][0].subject.get_attributes_for_oid(
-        pkcs12.x509.NameOID.COMMON_NAME)[0].value
-
-    if len(pkcs12_data[2]) > 1:
-        logger.warning(f"There were multiple CA certs in the certificate chain for ${common_name_server}. We are using "
-                       f"the first certificate in the chain ${common_name_root_ca}.")
-
     # Generate file paths with common names
     server_pem_file = os.path.join(server_pem_folder, f"{common_name_server}.pem")
-    root_ca_pem_file = os.path.join(root_ca_pem_folder, f"{common_name_root_ca}.pem")
 
     # Export server's certificate (private and public) to PEM
-    logger.info("Exporting certificates to PEM format...")
+    logger.info("Exporting server certificate to PEM format...")
     server_pem = pkcs12_data[0].private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     ) + pkcs12_data[1].public_bytes(encoding=serialization.Encoding.PEM)
 
-    # Export root CA's certificate to PEM
-    root_ca_pem = pkcs12_data[2][0].public_bytes(encoding=serialization.Encoding.PEM)
-
     # Write server's PEM file
     with open(server_pem_file, "wb") as file:
         file.write(server_pem)
 
-    # Write root CA's PEM file
-    with open(root_ca_pem_file, "wb") as file:
-        file.write(root_ca_pem)
+    # Write root CA PEM files
+    root_ca_pem_files = []
+    for i, ca_cert in enumerate(pkcs12_data[2]):
+        common_name_root_ca = ca_cert.subject.get_attributes_for_oid(
+            pkcs12.x509.NameOID.COMMON_NAME)[0].value
+        root_ca_pem_file = os.path.join(root_ca_pem_folder, f"{common_name_root_ca}.pem")
+        root_ca_pem_files.append(root_ca_pem_file)
+        root_ca_pem = ca_cert.public_bytes(encoding=serialization.Encoding.PEM)
+        with open(root_ca_pem_file, "wb") as file:
+            file.write(root_ca_pem)
 
-    return server_pem_file, root_ca_pem_file
+    return server_pem_file, root_ca_pem_files
 
 
 if __name__ == '__main__':
@@ -282,15 +291,15 @@ if __name__ == '__main__':
     root_cert_directory = args.root_cert_directory
     cert_directory = args.cert_directory
     server_pem_file = args.server_pem_file
-    root_ca_pem_file = args.root_ca_pem_file
+    root_ca_pem_files = [args.root_ca_pem_file]
 
     if args.pkcs_file:
-        server_pem_file, root_ca_pem_file = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory)
+        server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory)
 
     # Verify the PEM files
     logger.info("Verify both files are in PEM format...")
 
-    result = verify_pem_files(server_pem_file, root_ca_pem_file)
+    result = verify_pem_files(server_pem_file, root_ca_pem_files)
     if result:
         logger.info("Both PEM files are valid.")
     else:
@@ -299,7 +308,12 @@ if __name__ == '__main__':
 
     logger.info("Validate that the server cert is signed by the root CA cert...")
 
-    validate_server_cert(server_pem_file, root_ca_pem_file)
+    root_ca_pem_file = validate_server_cert(server_pem_file, root_ca_pem_files)
+
+    if not root_ca_pem_file:
+        logger.error("Error: The server's PEM file is not signed by any of the provided root CA certs. Make sure you "
+                     "have the correct root CA cert.")
+        exit(1)
 
     logger.info("Ensure that the common name in the root CA file matches ROOT_CA_NAME in config.yml...")
 

@@ -39,6 +39,7 @@ COPY ${PYTHON_CONTAINER_DIR}/configure_nginx.py .
 COPY ${PYTHON_CONTAINER_DIR}/configure_nginx_entrypoint.sh .
 COPY ${PYTHON_CONTAINER_DIR}/import_keys.py .
 COPY ${PYTHON_CONTAINER_DIR}/import_keys_entrypoint.sh .
+COPY ${PYTHON_CONTAINER_DIR}/helper_functions.py .
 
 RUN chmod +x ./generate_certificates_entrypoint.sh
 RUN chmod +x ./configure_nginx_entrypoint.sh

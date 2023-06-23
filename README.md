@@ -1,6 +1,32 @@
 # Patches
 
-This code is currently under active development. The project is in a beta phase. If you would like to try the beta code please use the [beta branch](https://github.com/dell/patches/tree/beta). 
+- [Patches](#patches)
+  - [What Is Patches?](#what-is-patches)
+  - [Supported Operating Systems](#supported-operating-systems)
+    - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
+  - [System Requirements](#system-requirements)
+  - [Patches Architecture Overview](#patches-architecture-overview)
+  - [Installation](#installation)
+    - [Download Patches](#download-patches)
+      - [Using Command Line](#using-command-line)
+      - [Using Browser](#using-browser)
+    - [Install Podman](#install-podman)
+    - [Open Ports](#open-ports)
+  - [Before You Run Setup](#before-you-run-setup)
+    - [Integrating Into Existing PKI Infrastructure](#integrating-into-existing-pki-infrastructure)
+      - [Manually Importing Certificates](#manually-importing-certificates)
+    - [Customizing Setup](#customizing-setup)
+      - [Users](#users)
+  - [Running Setup](#running-setup)
+    - [Manually Importing Repositories](#manually-importing-repositories)
+    - [Setting Up Certs](#setting-up-certs)
+  - [Admin Panel](#admin-panel)
+  - [OpenManage Enterprise (OME)](#openmanage-enterprise-ome)
+  - [How We Version](#how-we-version)
+    - [Major Version](#major-version)
+    - [Minor Version](#minor-version)
+    - [Patch Version](#patch-version)
+  - [Debugging](#debugging)
 
 ## What Is Patches?
 
@@ -81,15 +107,23 @@ At a minimum port 443 and 8080 must be open on the server. We recommend opening 
 
 Patches has its own certs that it generates and uses with its own internal PKI infrastructure. Required certs:
 
-You will need two PEM files. The first must include at least the root CA's certificate. The second must include the certificate and private key for the patches server itself.
+Patches accepts certificates in two formats, PEM and PKCS#12.
 
-Examples of the certificates are in [rootca.txt](./images/rootca.txt) and [patches.txt](./images/patches.txt)
+If you are using PEM, you will need two PEM files. The first must include at least the root CA's certificate. The second must include the certificate and private key for the patches server itself.
 
-**Beta Instructions**
+Examples of the certificates are in [rootca.pem](./images/rootca.txt) and [patches.pem](./images/patches.txt)
 
-An automated import is under development to include the ability to automatically convert from PKCS#12 however during the beta you will need to manually import the certs.
+If you are using PKCS#12, you only need the PKCS#12 file including both the server cert and its certificate chain.
 
-1. Make sure your certificates are in PEM format
+TODO - need to add instructions for import-keys
+
+#### Manually Importing Certificates
+
+**This is not recommended. Unless you have a specific reason, you should use the import-keys function described above.**
+
+TODO - left off here. Need to resolve domain bug.
+
+1. Make sure your certificates are in PEM format.
 2. Make sure the name of the root CA pem file is the same as what is listed in [config.yml](./podman-build/config.yml). The common name in the certificate itself must also match what is in config.yml. For example, if ROOT_CA_NAME is rootCA than your pem file should be rootCA.pem and the common name should be rootCA.
 3. Make sure the name of the patches server pem file is the same as what is listed in [config.yml](./podman-build/config.yml). For the patches server, the common name in the cert **must** include the domain. For example, if SERVER_NAME in config.yml is patches and DOMAIN is set to lan then the common name should be patches.lan. This is a bug and is on the list of things to fix in the beta. See [the bug tracker](https://github.com/orgs/dell/projects/8/views/1?pane=issue&itemId=30214314). This will be fixed in the release so that the domain name is not required.
 4. Copy your root CA cert to `./server_certs/root_certs`
@@ -112,6 +146,14 @@ One of these users should have a name that matches the name selected for PATCHES
 Log into your Linux server and browse to the `patches/podman-build` directory. Run `bash patches.sh setup` and follow the onscreen prompts.
 
 It's that simple. After the setup completes patches will be up, running, and available.
+
+### Manually Importing Repositories
+
+**Patches will automatically pull and build the entire PowerEdge catalog. If this is what you need then this is not necessary.**
+
+If you need to pull specific patches there are detailed instructions for manually pulling repositories located at [Download Repositories with Dell Repository Manager](./MANUALLY_PULL_REPOS.md)
+
+If you already have downloaded and exported the repository from DRM skip to step #13.
 
 ### Setting Up Certs
 
@@ -160,6 +202,8 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 ## Admin Panel
 
 The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. You can also add additional admin users with `bash <path_to_patches>/podman-build/patches.sh add-admin <username>`
+
+TODO - add usage instructions
 
 ## OpenManage Enterprise (OME)
 

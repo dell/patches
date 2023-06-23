@@ -219,68 +219,6 @@ function ask_yes_no() {
   done
 }
 
-# Function: validate_server_cert
-#
-# Description: This function validates that a server's PEM file is signed by a provided root CA cert.
-#              It takes two arguments: the path to the root CA public key in PEM format and
-#              the path to the server PEM file containing both the public and private keys.
-#              The function checks if the file types are PEM, and if not, throws an error.
-#              It then verifies that the server's PEM file is signed by the root CA cert using OpenSSL.
-#
-# Parameters:
-#   - $1: The path to the root CA public key in PEM format.
-#   - $2: The path to the server PEM file with both public and private keys.
-#
-# Returns: None. Exits with a non-zero status code if validation fails.
-#
-validate_server_cert() {
-  root_ca_cert="$1"
-  server_cert="$2"
-  ROOT_CA_NAME="expected_root_ca_name"
-  SERVER_CERT_NAME="expected_server_cert_name"
-
-  patches_echo "Checking $1 and $2"
-
-  # Check if file types are PEM
-  if ! openssl x509 -noout -text -in "$root_ca_cert" > /dev/null 2>&1 || ! openssl x509 -noout -text -in "$server_cert" > /dev/null 2>&1; then
-    patches_echo "Error: Both certificates must be in PEM format." --error
-    patches_echo "The root CA PEM file must have at least the public key, and the server PEM file must have both public and private keys." --error
-    exit 1
-  fi
-
-  patches_echo "Validating that ${root_ca_cert} signed ${server_cert}..."
-
-  # Validate server's PEM file against the root CA cert
-  if ! openssl verify -CAfile "$root_ca_cert" "$server_cert" >/dev/null; then
-    patches_echo "Error: The server's PEM file is not signed by the provided root CA cert." --error
-    exit 1
-  fi
-
-  # Check the common name in the root CA cert
-  root_ca_cn=$(openssl x509 -in "$root_ca_cert" -noout -subject | sed -n 's/^.*CN=\([^/]*\).*$/\1/p')
-  if [ "$root_ca_cn" != "$ROOT_CA_NAME" ]; then
-    if ask_yes_no "ROOT_CA_NAME in config.yml does not match the common name ${root_ca_cn} in ${root_ca_cert}. Do you want to update ROOT_CA_NAME in config.yml to match? Answering no will terminate the import."; then
-      sed -i "s/^ROOT_CA_NAME:.*/ROOT_CA_NAME: \"${root_ca_cn}\"/" "${SCRIPT_DIR}/config.yml"
-    else
-      patches_echo "Terminating import." --error
-      exit 1
-    fi
-  fi
-
-  # Check the common name in the server cert
-  server_cn=$(openssl x509 -in "$server_cert" -noout -subject | sed -n 's/^.*CN=\([^/]*\).*$/\1/p')
-  if [ "$server_cn" != "$SERVER_CERT_NAME" ]; then
-    if ask_yes_no "SERVER_NAME in config.yml does not match the common name ${server_cn} in ${server_cert}. Do you want to update SERVER_NAME in config.yml to match? Answering no will terminate the import."; then
-      sed -i "s/^SERVER_NAME:.*/SERVER_NAME: \"${server_cn}\"/" "${SCRIPT_DIR}/config.yml"
-    else
-      patches_echo "Terminating import." --error
-      exit 1
-    fi
-  fi
-
-  patches_echo "Validation successful. The server's PEM file is signed by the root CA cert, and the common names match."
-}
-
 # Function: parse_yaml
 #
 # Description: This function parses a YAML file and converts it to a Bash script.
@@ -1527,14 +1465,52 @@ EOF
 
     shift
 
+    # Make sure any old containers are cleaned up
+    podman rm -f import-keys || true
+
+    # Set NODE_ENV to development for debug mode
+    echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" > ${TOP_DIR}/.patches-import-keys
+    echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-import-keys
+
     if [[ "$#" -eq 2 ]]; then
       root_ca_public_key="$1"
       server_key="$2"
 
-      validate_server_cert "${root_ca_public_key}" "${server_key}"
+      # Copy server key to CERT_DIRECTORY
+      cp -f "${server_key}" "${TOP_DIR}/${CERT_DIRECTORY}"
 
-      mv "${root_ca_public_key}" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
-      mv "${server_key}" "${TOP_DIR}/${CERT_DIRECTORY}"
+      # Copy root CA public key to CERT_DIRECTORY/ROOT_CERT_DIRECTORY
+      cp -f "${root_ca_public_key}" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
+
+      echo "server_pem_file=/patches/${CERT_DIRECTORY}/${server_pem_file}" >> ${TOP_DIR}/.patches-import-keys
+      echo "root_ca_pem_file=patches/${CERT_DIRECTORY}/${root_ca_pem_file}" >> ${TOP_DIR}/.patches-import-keys
+
+      podman run \
+        --name import-keys \
+        -it \
+        --env-file ${TOP_DIR}/.patches-import-keys \
+        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+        --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
+        --entrypoint /app/import_keys_entrypoint.sh \
+        localhost/dell/patches-python:latest
+    elif [[ "$#" -eq 1 ]]; then
+      pkcs_file="$1"
+
+      echo "pkcs_file=/patches/${CERT_DIRECTORY}/$(basename ${pkcs_file})" >> ${TOP_DIR}/.patches-import-keys
+
+      # Copy PKCS file to CERT_DIRECTORY
+      cp -f "${pkcs_file}" "${TOP_DIR}/${CERT_DIRECTORY}"
+
+      podman run \
+        --name import-keys \
+        -it \
+        --env-file ${TOP_DIR}/.patches-import-keys \
+        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+        --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
+        --entrypoint /app/import_keys_entrypoint.sh \
+        localhost/dell/patches-python:latest
+    else
+      patches_echo "Too many arguments provided to import-keys. import-keys command requires one or two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
     fi
 
     ;;
