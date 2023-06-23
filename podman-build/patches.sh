@@ -54,6 +54,7 @@ function patches_echo() {
 #
 # Parameters:
 #   - prompt: The prompt message to display to the user.
+#   - --password: (Optional) Use this option to securely read a password without displaying the input.
 #
 # Environment Variables:
 #   - RETURN_VALUE: A global variable that stores the user input.
@@ -96,11 +97,17 @@ function patches_read() {
   echo
 
   # Read user input
-  read input
+  if [[ "$1" == "--password" ]]; then
+    # Read password securely (hidden input)
+    read -s input
+  else
+    read input
+  fi
 
   # Set the value of RETURN_VALUE variable
   RETURN_VALUE="$input"
 }
+
 
 ################################################################################
 # Perform checks to make sure that the conditions required to run the program  #
@@ -368,47 +375,6 @@ function build_drm() {
 
     patches_echo "Disk space check passed. Continuing installation..."
 
-    patches_echo "Validating DRM_INSTALL_URL variable ${DRM_INSTALL_URL}..."
-
-    # Validate the URL
-    if ! wget --spider "${DRM_INSTALL_URL}" 2>/dev/null; then
-      patches_echo "The URL ${DRM_INSTALL_URL} does not appear to exist. Test command was 'wget --spider "${DRM_INSTALL_URL}"' This command must complete successfully in order to continue. Make sure the DRM_INSTALL_URL variable in config.yml is valid." --error
-      exit 1
-    fi
-
-    # Extract the filename from the URL
-    filename="${DRM_INSTALL_URL##*/}"
-
-    # Check if the file extension is .bin
-    if [[ $filename != *.bin ]]; then
-      patches_echo "The DRM_INSTALL_URL variable in config.yml ${DRM_INSTALL_URL} does not point to a .bin file. This variable should point to the latest DRM version for Linux. Ex: https://dl.dell.com/FOLDER09359484M/1/DRMInstaller_3.4.3.869.bin" --error
-      exit 1
-    fi
-
-    # Print success message
-    patches_echo "URL ${DRM_INSTALL_URL} is valid and points to a .bin file."
-
-    patches_echo "Detecting version number..."
-    
-    # Extract the filename from the URL
-    # Remove everything up to the last forward slash in the URL to get the filename
-    filename="${DRM_INSTALL_URL##*/}"
-
-    # Extract the version number from the filename using regular expression matching
-    # The pattern "DRMInstaller_" matches the literal string "DRMInstaller_" at the beginning of the filename
-    # The pattern ".*" matches any characters after the "DRMInstaller_" string
-    # The pattern "\.bin$" matches the literal string ".bin" at the end of the filename
-    # The parentheses capture the matched version number
-    if [[ $filename =~ DRMInstaller_(.*)\.bin$ ]]; then
-        version="${BASH_REMATCH[1]}"
-    else
-        patches_echo "Failed to extract version number from URL ${DRM_INSTALL_URL}. This probably means the URL format has changed and the regex in this code is now broken. Please report this as a bug." --error
-        patches_read "Please enter the version number in the URL ${DRM_INSTALL_URL} manually: "
-        version=${RETURN_VALUE}
-    fi
-
-    patches_echo "DRM version detected as: ${version} based on url ${DRM_INSTALL_URL}"
-
     do_drm_build=true
 
     # Check if the DRM container image already exists
@@ -430,7 +396,7 @@ function build_drm() {
       --tag dell/patches-drm:latest \
       --squash-all \
       -f "${SCRIPT_DIR}/Dockerfile.drm" \
-      --build-arg "DRM_URL=${DRM_INSTALL_URL}" \
+      --build-arg "DRM_NAME=${DRM_NAME}" \
       "${TOP_DIR}"
     fi
 
@@ -460,7 +426,6 @@ function build_drm() {
 
     podman run \
       --name patches-drm \
-      --env-file ${TOP_DIR}/.patches-frontend \
       --volume ${TOP_DIR}/drm_repos/drm_download:/patches/drm_download:z \
       --volume ${TOP_DIR}/repos/xml:/patches/drm_export:z \
       localhost/dell/patches-drm:latest
@@ -970,8 +935,7 @@ while [[ $# -gt 0 ]]; do
       echo "  add-admin  Add an administrator to the admins list for the Patches database"
       echo "  reset-database Reset the Patches database and reinitialize it."
       echo "  install-service Install the Patches service so it will start on startup. (requires sudo)"
-      # TODO echo "  import-keys Import existing keys. Expects two arguments, the first is the root CA's public key (and optionally private key) in PEM format. The second is the Patch's server public and private key combined in PEM format. WARNING: This command will fail if the PEM files have import passwords."
-      # TODO see https://github.com/orgs/dell/projects/8/views/1?pane=issue&itemId=30214314
+      echo "  import-keys Import existing keys for use with Patches. It accepts one of two argument styles. The first expects two arguments, the first is the file path to a root CA's public key (and optionally private key) in PEM format. The second is the file path to the Patches server public and private key combined in PEM format. WARNING: This command will fail if the PEM files have import passwords. The second option is to pass the path to a PKCS#12 file containing your server's certificate/private key and the trust chain. The PKCS#12 file *can* contain a password."
       echo
       echo "Flags:"
       echo "  --debug      Runs the application in debug mode. Can only be used with the setup command. This is meant for developer use."
@@ -1234,7 +1198,7 @@ case $1 in
       podman run \
         --name patches-configure-nginx \
         --env-file ${TOP_DIR}/.patches-nginx \
-        --volume ${SCRIPT_DIR}/nginx.conf.j2:/app/nginx.conf.j2:Z \
+        --volume ${SCRIPT_DIR}/python_container/nginx.conf.j2:/app/nginx.conf.j2:Z \
         --volume ${SCRIPT_DIR}/nginx_config:/app/nginx_config:Z  \
         --entrypoint /app/configure_nginx_entrypoint.sh \
         localhost/dell/patches-python:latest
@@ -1472,7 +1436,7 @@ EOF
   import-keys)
 
     if [[ "$#" -lt 2 ]]; then
-      patches_echo "Error: import-keys command requires at least two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
+      patches_echo "Error: import-keys takes arguments in two formats. The first is the root CA public certificate (and optionally private key) in PEM format and the server private key/public certificate in PEM format. The second is a single argument containing the file path to a PKCS file which includes the root CA public certificate and the server's public certificate/private key. Exiting." --error
       exit 1
     fi
 
@@ -1509,19 +1473,30 @@ EOF
     elif [[ "$#" -eq 1 ]]; then
       pkcs_file="$1"
 
+      patches_read "Enter the password for your PKCS#12 file. If there is no password, leave this empty." --password
+
+      if [[ -n "$RETURN_VALUE" ]]; then
+        pkcs_password="$RETURN_VALUE"
+      fi
+
       echo "pkcs_file=/patches/${CERT_DIRECTORY}/$(basename ${pkcs_file})" >> ${TOP_DIR}/.patches-import-keys
 
       # Copy PKCS file to CERT_DIRECTORY
       cp -f "${pkcs_file}" "${TOP_DIR}/${CERT_DIRECTORY}"
 
+      # Add PKCS_PASSWORD as environment variable if pkcs_password is not empty
+      # The syntax ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} checks if pkcs_password is not empty
+      # If it is not empty, it adds the option "--env PKCS_PASSWORD=<value>" to the command
       podman run \
         --name import-keys \
         -it \
         --env-file ${TOP_DIR}/.patches-import-keys \
+        ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} \
         --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
         --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
         --entrypoint /app/import_keys_entrypoint.sh \
         localhost/dell/patches-python:latest
+
     else
       patches_echo "Too many arguments provided to import-keys. import-keys command requires one or two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
     fi

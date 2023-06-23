@@ -7,7 +7,8 @@ Listed here are all things which will require routine maintenance and updates.
 - PSQL_VERSION in [config.yml](./podman-build/config.yml)
 - HTTPD_VERSION in [config.yml](./podman-build/config.yml)
 - NGINX_VERSION in [config.yml](./podman-build/config.yml)
-- Default DRM installer version in the variable DRM_INSTALL_URL listed in [config.yml](./podman-build/config.yml)
+- Default DRM installer must be updated [config.yml](./podman-build/config.yml)
+  - Currently we are rehosting it with git LFS. The reason is that Dell's website blocks automated scraping so live pulls were not ideal. Moreover this removes any dependencies we have on the DRM version. However this does mean that new versions must be downloaded. Currently, the files are stored in drm_repos
 - Update the Node container in [Dockerfile.patches_base](./podman-build/Dockerfile.patches_base)
 - The Python version must be updated in [Dockerfile.python](podman-build/python_container/Dockerfile.python)
 

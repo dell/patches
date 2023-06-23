@@ -321,7 +321,7 @@ ipv4_address = args.ipv4_address
 
 yaml_data = None
 
-with open('../config.yml', 'r') as stream:
+with open('config.yml', 'r') as stream:
     try:
         yaml_data = yaml.safe_load(stream)
     except yaml.YAMLError as exc:

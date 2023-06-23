@@ -1,6 +1,6 @@
 #!/usr/bin/expect
 
-spawn bash ./DRMInstaller_3.4.3.869.bin
+spawn bash ./DRMInstaller.bin
 
 expect "PRESS <ENTER> TO CONTINUE:"
 send "\r"

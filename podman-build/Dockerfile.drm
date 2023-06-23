@@ -1,18 +1,38 @@
-FROM fedora:rawhide as builder
+FROM fedora:rawhide
 
-ARG DRM_URL
+ARG DRM_NAME
+
+RUN dnf update -y && \
+    dnf install -y git hostname systemd expect
 
 WORKDIR /tmp
 
-COPY podman-build/drm_install.exp /tmp
 RUN mkdir -p /patches
 RUN mkdir -p /patches/drm_export/
 RUN mkdir -p /patches/drm_download/
+
 COPY podman-build/drm_run.sh /patches/drm_run.sh
-RUN dnf update -y && dnf install -y expect wget hostname systemd
-RUN wget ${DRM_URL}
-RUN expect ./drm_install.exp
-RUN chown -R drmuser: /patches
+COPY podman-build/drm_install.exp /tmp/drm_install.exp
+
+# Clone the repository with the beta branch
+RUN git clone --branch beta --single-branch https://github.com/dell/patches.git /tmp/patches
+
+# Install Git LFS
+RUN dnf install -y git-lfs
+
+# Fetch the DRM installer file
+RUN cd /tmp/patches && git lfs pull --include="drm_repos/${DRM_NAME}"
+
+
+# Move the DRM installer file to the desired location
+RUN mv /tmp/patches/drm_repos/${DRM_NAME} /tmp/DRMInstaller.bin
+
+# Set executable permission on the DRM installer file
+RUN chmod +x /tmp/DRMInstaller.bin
+
+# Run the expect script
+RUN expect /tmp/drm_install.exp
+
 RUN chmod +x /patches/drm_run.sh
 
 # Run a lightweight command to keep the container running indefinitely

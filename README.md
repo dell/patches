@@ -4,6 +4,7 @@
   - [What Is Patches?](#what-is-patches)
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
+    - [STIGs](#stigs)
   - [System Requirements](#system-requirements)
   - [Patches Architecture Overview](#patches-architecture-overview)
   - [Installation](#installation)
@@ -14,6 +15,7 @@
     - [Open Ports](#open-ports)
   - [Before You Run Setup](#before-you-run-setup)
     - [Integrating Into Existing PKI Infrastructure](#integrating-into-existing-pki-infrastructure)
+      - [Import Keys](#import-keys)
       - [Manually Importing Certificates](#manually-importing-certificates)
     - [Customizing Setup](#customizing-setup)
       - [Users](#users)
@@ -52,19 +54,23 @@ Rocky Linux is the spiritual successor to previous iterations of CentOS. It is a
 
 We recommend you use the Minimal distribution.
 
+### STIGs
+
+If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organization Rocky Linux comes with an option in the installer to automatically STIG the operating system. See [this official Rocky Linux guide](https://docs.rockylinux.org/books/disa_stig/disa_stig_part1/) for how to create a STIG-hardened Rocky instance automatically.
+
+**Note** At the time of writing Rocky Linux 9 does not yet have STIGs because RHEL 9 does not yet have STIGs. If you need the STIG-hardened version we recommend you use Rocky Linux 8.
+
 ## System Requirements
 
 Patches can run on a shoestring server, but the installer will check to make sure you have at least 80GBs of free space during the installation. Note: This is not to say that the hard drive should be 80GBs, there must be 80GBs of free space at runtime.
 
 ## Patches Architecture Overview
 
-Patches consists of the following Podman containers:
+It is not important that you understand this to use Patches, but it is provided here for those who want to understand a bit behind how it works without reading the code. Patches consists of the following Podman containers:
 
-TODO - clarify for less experienced
-
-- A NodeJS backend for handling all queries
-- A ReactJS frontend for displaying the frontend
-- An instance of Nginx which proxies connections from users to either the ReactJS frontend server or the backend server dependent on the URI requested
+- A NodeJS backend for handling all queries. Anytime Patches has to process requests for a specific patch, look up admin data, etc, NodeJS does the processing.
+- A ReactJS frontend for displaying the frontend. ReactJS is a JavaScript framework for building web interfaces.
+- An instance of Nginx which proxies connections from users to either the ReactJS frontend server or the backend server dependent on the URI requested. When you connect to Patches you first connect to Nginx. Nginx then determines what you are asking for specifically and forwards it to either ReactJS or NodeJS.
 - Postgresql stores all metadata for the various patches along with the user statistics of who used what Patches
 - An HTTPD container which hosts the raw Dell Repository Manager repos which OME can leverage
 
@@ -115,7 +121,9 @@ Examples of the certificates are in [rootca.pem](./images/rootca.txt) and [patch
 
 If you are using PKCS#12, you only need the PKCS#12 file including both the server cert and its certificate chain.
 
-TODO - need to add instructions for import-keys
+#### Import Keys
+
+To import keys, change to the `patches/podman-build` directory and run `bash patches.sh import-keys <your_pkcs#12 file>` or `bash patches.sh import-keys <root_ca.pem> <patches_server_cert.pem>`.
 
 #### Manually Importing Certificates
 
@@ -199,7 +207,7 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 
 ## Admin Panel
 
-The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. You can also add additional admin users with `bash <path_to_patches>/podman-build/patches.sh add-admin <username>`
+The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. You can also add additional admin users with `bash patches/podman-build/patches.sh add-admin <username>`
 
 TODO - add usage instructions
 

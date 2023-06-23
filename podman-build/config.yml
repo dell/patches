@@ -176,4 +176,5 @@ NGINX_PORT:
 
 # There isn't a good way to programmatically get this. DRM is available at
 # https://www.dell.com/support/home/en-us/drivers/DriversDetails?driverid=8GDHG
-DRM_INSTALL_URL: "https://dl.dell.com/FOLDER09359484M/1/DRMInstaller_3.4.3.869.bin"
+# Currently we are rehosting this with git LFS
+DRM_NAME: "DRMInstaller_3.4.3.869.bin"

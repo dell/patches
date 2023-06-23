@@ -279,6 +279,8 @@ if __name__ == '__main__':
                         help='Directory path holding the root certificates')
     parser.add_argument('--cert-directory', dest='cert_directory', type=str,
                         help='Directory path holding the regular server certificates')
+    parser.add_argument('--pkcs-password', dest='pkcs_password', type=str,
+                        help='Password for the PKCS file')
 
     # Parse command-line arguments
     args = parser.parse_args()
@@ -292,9 +294,10 @@ if __name__ == '__main__':
     cert_directory = args.cert_directory
     server_pem_file = args.server_pem_file
     root_ca_pem_files = [args.root_ca_pem_file]
+    pkcs_password = args.pkcs_password
 
     if args.pkcs_file:
-        server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory)
+        server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory, pkcs_password)
 
     # Verify the PEM files
     logger.info("Verify both files are in PEM format...")
