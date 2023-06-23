@@ -349,7 +349,22 @@ function build_drm() {
 
   podman rm -f -t 0 patches-drm
 
-  if ask_yes_no "The code downloads several 10s of GB of data to populate the Enterprise PowerEdge catalog data for Patches. It checks if you have at least 80GB of disk space available, which is more than what the final container will use. There may be pauses of 60 seconds due to an expect script running to install DRM. Do you want to continue?"; then
+  if ask_yes_no "The code downloads several 10s of GB of data to populate the Enterprise PowerEdge catalog data for Patches. It checks if you have at least ${REQUIRED_SPACE}GB of disk space available, which is more than what the final container will use. There may be pauses of 60 seconds due to an expect script running to install DRM. Do you want to continue?"; then
+
+    # Check available disk space of the partition containing ${TOP_DIR}/repos
+    patches_echo "Checking which partition we are using..."
+    partition=$(df -P "${TOP_DIR}/repos" | awk 'NR==2{print $1}')
+    patches_echo "repos folder is on partition ${partition}..."
+    available_space=$(df -BG --output=avail "$partition" | sed '1d;s/[^0-9]*//g')
+
+    if [[ "$available_space" -lt "$REQUIRED_SPACE" ]]; then
+      patches_echo "Insufficient disk space. At least ${REQUIRED_SPACE}GB of free space is required on the partition: $partition" --error
+      patches_echo "Available disk space: $available_space GB" --error
+      patches_echo "To check disk space, run the following command: df -BG --output=avail $partition | sed '1d;s/[^0-9]*//g'" --error
+      exit 1
+    else
+      patches_echo "${partition} has sufficient disk space..."
+    fi
 
     patches_echo "Disk space check passed. Continuing installation..."
 
@@ -1235,8 +1250,6 @@ case $1 in
       # Check if keys already exist in the cert directory and if they do prompt the user whether they want to continue
       # with key generation.
 
-      patches_echo "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" --error
-
       # Check if any pem files exist in the directory
       if ! [[ $(find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -name "*.pem" | wc -l) -gt 0 ]]; then
         if ! ask_yes_no "There are files present in ${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY} but none of them end in the .pem extension. This program requires the CA cert in .pem format with at least the public key present. The private key does not have to be present. Do you want to continue by generating completely new keys? Say no to end Patches installation."; then
@@ -1512,6 +1525,9 @@ EOF
     else
       patches_echo "Too many arguments provided to import-keys. import-keys command requires one or two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
     fi
+
+    # Cleanup the container
+    podman rm -f import-keys || true
 
     ;;
 

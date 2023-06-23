@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import pkcs12
 
-from helper_functions import PatchesLogger, ask_yes_no
+from helper_functions import PatchesLogger, ask_yes_no, convert_pem_files
 
 logger = PatchesLogger.get_logger()
 
@@ -326,4 +326,12 @@ if __name__ == '__main__':
         logger.info("Server certificate common name verification successful.")
     else:
         logger.error("Server certificate common name verification failed.")
+
+    logger.info("Converting files to .crt/.key...")
+
+    for pem_file in root_ca_pem_files:
+        convert_pem_files(pem_file)
+
+    convert_pem_files(server_pem_file)
+
 

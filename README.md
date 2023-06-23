@@ -121,11 +121,9 @@ TODO - need to add instructions for import-keys
 
 **This is not recommended. Unless you have a specific reason, you should use the import-keys function described above.**
 
-TODO - left off here. Need to resolve domain bug.
-
 1. Make sure your certificates are in PEM format.
 2. Make sure the name of the root CA pem file is the same as what is listed in [config.yml](./podman-build/config.yml). The common name in the certificate itself must also match what is in config.yml. For example, if ROOT_CA_NAME is rootCA than your pem file should be rootCA.pem and the common name should be rootCA.
-3. Make sure the name of the patches server pem file is the same as what is listed in [config.yml](./podman-build/config.yml). For the patches server, the common name in the cert **must** include the domain. For example, if SERVER_NAME in config.yml is patches and DOMAIN is set to lan then the common name should be patches.lan. This is a bug and is on the list of things to fix in the beta. See [the bug tracker](https://github.com/orgs/dell/projects/8/views/1?pane=issue&itemId=30214314). This will be fixed in the release so that the domain name is not required.
+3. Make sure the name of the patches server pem file is the same as what is listed in [config.yml](./podman-build/config.yml). For the patches server, the common name in the cert **must** include the domain. For example, if SERVER_NAME in config.yml is patches and DOMAIN is set to lan then the common name should be patches.lan.
 4. Copy your root CA cert to `./server_certs/root_certs`
 5. Copy your server cert to `./server_certs`
 

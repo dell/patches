@@ -1,12 +1,16 @@
 import logging
+import os
 import textwrap
 import time
 from typing import Optional
 
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509 import Certificate
+from cryptography.x509 import load_pem_x509_certificate
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 
 class PatchesLogHandler(logging.Handler):
@@ -191,6 +195,55 @@ def generate_pkcs12_certificate(name: str, private_key: rsa.RSAPrivateKey, certi
     )
 
     return pkcs12_data
+
+
+def convert_pem_files(pem_path):
+    """
+    Converts PEM files to separate files containing the private key and the public certificate.
+
+    Args:
+        pem_path (str): The path to the PEM file.
+
+    Raises:
+        ValueError: If the provided PEM file doesn't exist or is not a valid PEM file.
+
+    Returns:
+        str: The path to the public certificate file.
+    """
+    if not os.path.exists(pem_path):
+        raise ValueError(f"The PEM file '{pem_path}' does not exist.")
+
+    pem_dir = os.path.dirname(pem_path)
+
+    # Read the contents of the PEM file
+    with open(pem_path, 'rb') as pem_file:
+        pem_data = pem_file.read()
+
+    # Load the PEM data as an X509 certificate
+    cert = load_pem_x509_certificate(pem_data, default_backend())
+
+    # Write the public certificate to a file
+    cert_file_path = os.path.join(pem_dir, f"{os.path.splitext(os.path.basename(pem_path))[0]}.crt")
+    with open(cert_file_path, 'wb') as cert_file:
+        cert_file.write(cert.public_bytes(encoding=serialization.Encoding.PEM))
+
+    private_key = None
+    try:
+        private_key = load_pem_private_key(pem_data, password=None, backend=default_backend())
+    except (ValueError, TypeError):
+        pass
+
+    # Write the private key to a file if available
+    if private_key is not None:
+        key_file_path = os.path.join(pem_dir, f"{os.path.splitext(os.path.basename(pem_path))[0]}.key")
+        with open(key_file_path, 'wb') as key_file:
+            key_file.write(private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+
+    return cert_file_path
 
 
 def ask_yes_no(prompt):
