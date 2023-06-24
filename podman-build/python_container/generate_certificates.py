@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.x509 import Certificate
 from cryptography.x509.oid import NameOID
 
-from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger
+from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger, update_config_file
 
 # Get the logger instance
 logger = PatchesLogger.get_logger()
@@ -93,14 +93,6 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
                 break
             else:
                 logger.info("Invalid input. Please enter 'yes' or 'no'")
-    else:
-        patches_read(
-            f"No root certificates in pem or key/crt format found (expects lowercase .pem or .key/crt). In "
-            f"{os.path.abspath(root_cert_directory)}. Based on the variable root_ca_name in config.yml we checked for "
-            f"{os.path.join(root_ca_name, os.path.abspath(root_cert_directory), root_ca_name)}(.key/.crt/.pem.) We are"
-            f" now automatically going to create the root CA. If this is not what you want exit the program and "
-            f"populate the root certificate directory with the appropriate .pem or .key/.crt files. Press enter to "
-            f"continue.")
 
     # Generate private key
     logger.info("Generating private key")
@@ -147,6 +139,7 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
     pem = combine_keys_to_pem(private_key, public_key)
     with open(os.path.join(root_cert_directory, f"{root_ca_name}.pem"), "wb") as f:
         f.write(pem)
+    update_config_file('ROOT_CA_PEM', f"{root_ca_name}.pem")
 
     return private_key, public_key
 
@@ -358,6 +351,9 @@ create_ssl_cert(
     ip_1=ipv4_address,
     ip_2=None,
     days=yaml_data['days'])
+
+update_config_file('SERVER_PEM', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.pem")
+update_config_file('PKCS_FILE', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.p12")
 
 logger.info("Creating the patches backend certificate...")
 

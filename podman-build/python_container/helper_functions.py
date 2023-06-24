@@ -269,3 +269,36 @@ def ask_yes_no(prompt):
             return False
         else:
             logger.error("Invalid input. Please enter either 'yes' or 'no'.")
+
+
+def update_config_file(field_name, file_name):
+    """
+    Updates the specified field in the config.yml file with the given absolute file path.
+
+    Args:
+        field_name (str): Name of the field to update. Must be one of "ROOT_CA_PEM", "SERVER_PEM", or "PKCS_FILE".
+        file_name (str): The name of the certificate
+
+    Raises:
+        ValueError: If an invalid field name is provided.
+
+    Returns:
+        None
+    """
+    config_file_path = 'config.yml'
+
+    with open(config_file_path, 'r') as config_file:
+        lines = config_file.readlines()
+
+    # Find and update the fields
+    for i, line in enumerate(lines):
+        if field_name == 'ROOT_CA_PEM' and line.startswith('ROOT_CA_PEM:'):
+            lines[i] = f"ROOT_CA_PEM: {file_name}\n"
+        elif field_name == 'SERVER_PEM' and line.startswith('SERVER_PEM:'):
+            lines[i] = f"SERVER_PEM: {file_name}\n"
+        elif field_name == 'PKCS_FILE' and line.startswith('PKCS_FILE:'):
+            lines[i] = f"PKCS_FILE: {file_name}\n"
+
+    # Write back modified data to config.yml
+    with open(config_file_path, 'w') as config_file:
+        config_file.writelines(lines)

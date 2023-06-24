@@ -58,7 +58,7 @@ We recommend you use the Minimal distribution.
 
 If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organization Rocky Linux comes with an option in the installer to automatically STIG the operating system. See [this official Rocky Linux guide](https://docs.rockylinux.org/books/disa_stig/disa_stig_part1/) for how to create a STIG-hardened Rocky instance automatically.
 
-**Note** At the time of writing Rocky Linux 9 does not yet have STIGs because RHEL 9 does not yet have STIGs. If you need the STIG-hardened version we recommend you use Rocky Linux 8.
+**Note** At the time of writing the docs only mention Rocky Linux 8 but it is available for Rocky Linux 9 as well.
 
 ## System Requirements
 

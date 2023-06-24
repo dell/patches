@@ -178,3 +178,10 @@ NGINX_PORT:
 # https://www.dell.com/support/home/en-us/drivers/DriversDetails?driverid=8GDHG
 # Currently we are rehosting this with git LFS
 DRM_NAME: "DRMInstaller_3.4.3.869.bin"
+
+# These fields are populated automatically by the code when import_keys runs or
+# generate keys runs. They are used to keep track of the keys files. They should
+# not be manually manipulated.
+ROOT_CA_PEM: 
+SERVER_PEM: 
+PKCS_FILE: 

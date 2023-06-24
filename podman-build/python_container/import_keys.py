@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import pkcs12
 
-from helper_functions import PatchesLogger, ask_yes_no, convert_pem_files
+from helper_functions import PatchesLogger, ask_yes_no, convert_pem_files, update_config_file
 
 logger = PatchesLogger.get_logger()
 
@@ -114,7 +114,6 @@ def validate_server_cert(server_cert_file, root_ca_cert_files):
     except Exception as e:
         logger.error(f"Validation error: {str(e)}")
         exit(1)
-
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e.filename}")
@@ -281,6 +280,8 @@ if __name__ == '__main__':
                         help='Directory path holding the regular server certificates')
     parser.add_argument('--pkcs-password', dest='pkcs_password', type=str,
                         help='Password for the PKCS file')
+    parser.add_argument('--validate', dest='validate', action='store_true', default=False,
+                        help='Run validation only. Do not copy files.')
 
     # Parse command-line arguments
     args = parser.parse_args()
@@ -295,8 +296,9 @@ if __name__ == '__main__':
     server_pem_file = args.server_pem_file
     root_ca_pem_files = [args.root_ca_pem_file]
     pkcs_password = args.pkcs_password
+    validate = args.validate
 
-    if args.pkcs_file:
+    if args.pkcs_file and not validate:
         server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory, pkcs_password)
 
     # Verify the PEM files
@@ -332,9 +334,14 @@ if __name__ == '__main__':
 
     logger.info("Converting files to .crt/.key...")
 
-    for pem_file in root_ca_pem_files:
-        convert_pem_files(pem_file)
+    if not validate:
+        for pem_file in root_ca_pem_files:
+            convert_pem_files(pem_file)
 
-    convert_pem_files(server_pem_file)
+        convert_pem_files(server_pem_file)
 
-
+        # Call update_config_file for each field
+        update_config_file('ROOT_CA_PEM', os.path.basename(root_ca_pem_file))
+        update_config_file('SERVER_PEM', os.path.basename(server_pem_file))
+        if args.pkcs_file:
+            update_config_file('PKCS_FILE', os.path.basename(args.pkcs_file))

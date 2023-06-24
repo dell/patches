@@ -862,21 +862,49 @@ EOF
 # Returns:
 #   None
 function patches_build() {
-  # Delete any old containers still running on the server
-  cleanup_containers
 
-  podman build \
-    --tag dell/patches-python:latest \
-    --squash-all \
-    -f ${SCRIPT_DIR}/python_container/Dockerfile.python \
-    --build-arg "PYTHON_CONTAINER_DIR=podman-build/python_container" \
-    ${TOP_DIR}
-  
-  podman build \
-    --tag dell/patches-base:latest \
-    --squash-all \
-    -f ${SCRIPT_DIR}/Dockerfile.patches_base \
-    ${TOP_DIR}
+  local container_name="$1"
+
+  if [[ -z "$container_name" ]]; then
+
+    # Delete any old containers still running on the server
+    cleanup_containers
+    
+    podman build \
+      --tag dell/patches-python:latest \
+      --squash-all \
+      -f ${SCRIPT_DIR}/python_container/Dockerfile.python \
+      --build-arg "PYTHON_CONTAINER_DIR=podman-build/python_container" \
+      ${TOP_DIR}
+
+    podman build \
+      --tag dell/patches-base:latest \
+      --squash-all \
+      -f ${SCRIPT_DIR}/Dockerfile.patches_base \
+      ${TOP_DIR}
+  else
+    case "$container_name" in
+      "python")
+        podman build \
+          --tag dell/patches-python:latest \
+          --squash-all \
+          -f ${SCRIPT_DIR}/python_container/Dockerfile.python \
+          --build-arg "PYTHON_CONTAINER_DIR=podman-build/python_container" \
+          ${TOP_DIR}
+        ;;
+      "base")
+        podman build \
+          --tag dell/patches-base:latest \
+          --squash-all \
+          -f ${SCRIPT_DIR}/Dockerfile.patches_base \
+          ${TOP_DIR}
+        ;;
+      *)
+        echo "Invalid container name: $container_name"
+        exit 1
+        ;;
+    esac
+  fi
 
   ascii_art=$(cat << "EOF"
    ___              _       _        _                           
@@ -898,6 +926,447 @@ EOF
 
 }
 
+# patches_setup performs the setup and configuration steps for Patches.
+#
+# Description: Performs the setup and configuration steps for Patches.
+#   - Checks if the operating system is Rocky Linux.
+#   - Prompts the user for the administrator name if PATCHES_ADMINISTRATOR is not set.
+#   - Cleans up any old containers.
+#   - Sets up environment variables for the Patches backend and frontend.
+#   - Enables and starts the Podman service.
+#   - Checks the presence of repository XML files and prompts the user to use Dell Repository Manager if no files are found.
+#   - Configures Patches interfaces.
+#   - Generates Nginx configuration.
+#   - Checks for the presence of Patches build containers and builds them if missing.
+#   - Removes old containers.
+#   - Generates Nginx configuration.
+#   - Sets up environment variables for the certificate generator.
+#   - Checks for existing keys and prompts the user to continue or generate new keys.
+#   - Runs PostgreSQL, Patches services, and Nginx.
+#   - Runs an HTTP server container for servicing OME hosts.
+#   - Configures the administrator for the PostgreSQL database.
+#   - Enables the Patches systemd service.
+#
+# Parameters:
+#   None
+#
+# Environment Variables:
+#   - PATCHES_ADMINISTRATOR: The name of the administrator for Patches.
+#
+# Returns:
+#   None
+#
+function patches_setup() {
+
+  # Check if the current operating system is Rocky Linux
+
+  if [ -f /etc/os-release ]; then
+      source /etc/os-release
+      if [[ $ID == "rocky" ]]; then
+        patches_echo "Running on Rocky Linux..."
+      else
+        if ! ask_yes_no "You are not running Rocky Linux. Patches has only been tested on Rocky Linux and we recommend using Rocky Linux. While Patches was designed to run on all *nix flavors, you may run into errors unique to your OS. Do you want to continue?"; then
+          patches_echo "Exiting" --error
+          exit 1
+        fi
+      fi
+  else
+      patches_echo "Warning: Unable to determine the operating system." --error
+  fi
+
+  # Check if PATCHES_ADMINISTRATOR is empty
+  if [ -z "$PATCHES_ADMINISTRATOR" ]; then
+      patches_read "Please enter the name of the administrator for patches. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel."
+      administrator_name=${RETURN_VALUE}
+
+      # Update the PATCHES_ADMINISTRATOR line in the config file
+      sed -i "s/^PATCHES_ADMINISTRATOR:.*/PATCHES_ADMINISTRATOR: $administrator_name/" "${SCRIPT_DIR}/config.yml"
+
+      patches_echo "Administrator name updated in the config file."
+  else
+      patches_echo "PATCHES_ADMINISTRATOR is already set to: $PATCHES_ADMINISTRATOR"
+  fi
+
+  # Delete any old containers still running on the server
+  cleanup_containers
+
+  # Setup environment variables for the patches backend
+  > ${TOP_DIR}/.patches-backend
+  echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
+  echo "DEBUG=$DEBUG" >> ${TOP_DIR}/.patches-backend
+  echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
+  echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
+  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
+  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-backend"
+  echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-backend"
+  echo "DOWNLOAD_PATH=/patches/download" >> "${TOP_DIR}/.patches-backend"
+  echo "XML_PATH=/patches/xml" >> "${TOP_DIR}/.patches-backend"
+  echo "PARSED_PATH=/patches/xml/parsed" >> "${TOP_DIR}/.patches-backend"
+  echo "REPO_PATH=/patches/xml/" >> "${TOP_DIR}/.patches-backend"
+  echo "SSL_ON=0" >> "${TOP_DIR}/.patches-backend" # This is for the connection to postgresql internally
+  source ${TOP_DIR}/.patches-backend
+
+  # Setup the environment variables for the postgres container
+  > ${TOP_DIR}/.patches-psql
+  echo "POSTGRES_USER=${PSQL_USERNAME}" >> ${TOP_DIR}/.patches-psql
+  echo "POSTGRES_PASSWORD=${PSQL_PASSWORD}" >> ${TOP_DIR}/.patches-psql
+  echo "POSTGRES_DB=${POSTGRES_DB}" >> ${TOP_DIR}/.patches-psql
+
+  # Setup environment variables for the patches frontend
+  > ${TOP_DIR}/.patches-frontend
+  # TODO This needs to be updated. See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634186
+  echo "NODE_OPTIONS=--openssl-legacy-provider" >> ${TOP_DIR}/.patches-frontend
+  echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-frontend
+  echo "PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-frontend
+
+  systemctl enable --now --user podman podman.socket
+
+  # Check to make sure the user has added the repository files
+  xml_files=(`find ./repos/xml -maxdepth 2 -name "*.xml"`)
+  if [ ${#xml_files[@]} -gt 0 ]; then 
+      echo true 
+  else
+      patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case."
+
+      if ask_yes_no "Do you want to use Dell Repository Manager to pull the Enterprise Catalog automatically?"; then
+        # Check if the DRM container image already exists
+        build_drm
+      else
+          patches_echo "We cannot continue without the repository. Exiting." --error
+          exit 1
+      fi
+  fi
+
+  # Configure Patches interfaces
+
+  patches_echo "Checking interfaces..."
+  # Check for invalid interfaces and tell the user we ignored them and why we ignored them
+  for iface in $(ip addr | awk '/state/ {print $2}' | sed 's/://; /^lo/d' | grep -v "${interfaces}")
+  do
+    patches_echo "Ignored $iface because it is not in an UP/UP state with an assigned IPv4 address."
+  done
+
+  # get list of physical interfaces in an UP/UP state with an assigned IPv4 address
+  interfaces=$(ip addr | awk '/state UP/ {print $2}' | sed 's/://; /^lo/d' | xargs -I {} sh -c 'if ip addr show {} | grep -q "inet "; then echo {}; fi')
+
+  if [ -z "${interfaces}" ]; then
+    patches_echo "No interfaces found with an assigned IPv4 address and UP/UP state."
+    exit 1
+  fi
+
+  # Prompt the user to enter an interface
+  patches_echo "List of available interfaces:"
+  PS3=$(echo -e "\033[1;34mEnter the number of the interface you want to use: \033[0m")
+  select interface in ${interfaces}
+  do
+    if [ -z "$interface" ]; then
+      patches_echo "Invalid input. Please enter a number from 1 to $(echo ${interfaces} | wc -w)."
+    else
+      ipv4_address=$(ip addr show $interface | awk '$1 == "inet" {gsub(/\/.*$/, "", $2); print $2}')
+      patches_echo "Using interface $interface with IPv4 address $ipv4_address."
+      break
+    fi
+  done
+
+  # Create the nginx environment variable configuration file
+  echo "IPV4_ADDRESS=${ipv4_address}" > "${TOP_DIR}/.patches-nginx"
+  echo "INTERFACE=${interface}" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_NAME=${SERVER_NAME}" >> "${TOP_DIR}/.patches-nginx"
+  echo "DOMAIN=${DOMAIN}" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
+  echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
+  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.crt" >> "${TOP_DIR}/.patches-nginx"
+  echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
+  echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
+  echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
+
+  # Before continuing we need to make sure that all the build containers are present
+  patches_echo "Making sure Patches build has already run..."
+  images=("localhost/dell/patches-base" "localhost/dell/patches-python")
+  missing_images=()
+
+  for image in "${images[@]}"; do
+    if ! podman image exists "$image" >/dev/null 2>&1; then
+      missing_images+=("$image")
+    fi
+  done
+
+  if [[ ${#missing_images[@]} -gt 0 ]]; then
+    patches_echo "There are missing Patches images. Running build to build the images..."
+    patches_build
+  else
+    patches_echo "Patches images alreday present."
+  fi
+
+  # Remove any old containers
+  podman rm -f -t 0 'patches-configure-nginx'
+
+  # Generate the nginx configuration
+  patches_echo "Generating nginx configuration..."
+  podman run \
+    --name patches-configure-nginx \
+    --env-file ${TOP_DIR}/.patches-nginx \
+    --volume ${SCRIPT_DIR}/python_container/nginx.conf.j2:/app/nginx.conf.j2:Z \
+    --volume ${SCRIPT_DIR}/nginx_config:/app/nginx_config:Z  \
+    --entrypoint /app/configure_nginx_entrypoint.sh \
+    localhost/dell/patches-python:latest
+
+  # Remove the configuration container after it is finished
+  podman rm -f -t 0 'patches-configure-nginx'
+
+  # Setup environment variables for the certificate generator
+  echo "IPV4_ADDRESS=${ipv4_address}" > ${TOP_DIR}/.patches-certificate-generator
+  echo "ROOT_CERT_DIRECTORY=${ROOT_CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
+  echo "CERT_DIRECTORY=${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
+
+  # Check if keys already exist in the cert directory and if they do prompt the user whether they want to continue
+  # with key generation.
+
+  patches_echo "Running validate_certs to make sure certs match..."
+
+  if [[ -n "${ROOT_CA_PEM}" && -n "${SERVER_PEM}" ]]; then
+    if [[ -f "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_PEM}" && -f "${TOP_DIR}/${CERT_DIRECTORY}/${SERVER_PEM}" ]]; then
+      validate_certs "${ROOT_CA_PEM}" "${SERVER_PEM}"
+    else
+      missing_files=()
+      if [[ ! -f "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_PEM}" ]]; then
+        missing_files+=("${ROOT_CA_PEM}")
+      fi
+      if [[ ! -f "${TOP_DIR}/${CERT_DIRECTORY}/${SERVER_PEM}" ]]; then
+        missing_files+=("${SERVER_PEM}")
+      fi
+      missing_files_list=$(IFS=", "; echo "${missing_files[*]}")
+      if ! ask_yes_no "Error: The following PEM files specified in the variables ROOT_CA_PEM or SERVER_PEM do not exist: ${missing_files_list}. Do you want to generate new certificates instead? Type no to terminate patches. You can import existing certificates with \`bash patches.sh import-keys <args>\`" --error; then
+        patches_echo "Terminating." --error
+        exit 1
+      else
+        generate_certificates
+      fi
+      exit 1
+    fi
+  else
+    if ! ask_yes_no "No existing certificates configured. Type yes to continue with automatic certificate generation. Type no to terminate patches. You can import existing certificates with \`bash patches.sh import-keys <args>\`"; then
+      patches_echo "Terminating." --error
+      exit 1
+    else
+      generate_certificates
+    fi
+  fi
+
+  run_postgresql
+
+  run_patches_services
+
+  run_nginx
+
+  podman run --restart=always -dit --name patches-httpd --publish 8080:80 --volume ${TOP_DIR}/repos/xml/:/usr/local/apache2/htdocs/:z docker.io/library/httpd:${HTTPD_VERSION}
+
+  patches_echo "Checking if the server is running..."
+
+  if [[ -z $(podman inspect --format '{{.State.Running}}' patches-psql | grep -i true) ]]; then
+      patches_echo  "It appears that the PSQL server (patches-psql) container failed to deploy correctly. Try checking its status with 'podman logs patches-psql'." --error
+      exit 1
+  fi
+
+  if [[ -z $(podman inspect --format '{{.State.Running}}' patches-backend | grep -i true) ]]; then
+      patches_echo  "It appears that the Patches backend (patches-backend) container failed to deploy correctly. Try checking its status with 'podman logs patches-backend'." --error
+      exit 1
+  fi
+
+  if [[ -z $(podman inspect --format '{{.State.Running}}' patches-frontend | grep -i true) ]]; then
+      patches_echo  "It appears that the Patches frontend (patches-frontend) container failed to deploy correctly. Try checking its status with 'podman logs patches-frontend'." --error
+      exit 1
+  fi
+
+  # SQL script for setting up admin user
+  patches_echo "Configuring ${PATCHES_ADMINISTRATOR} as the administrator for the PostgreSQL database..."
+  configure_administrator "${PATCHES_ADMINISTRATOR}"
+
+  enable_systemd_service
+
+  echo "setup_complete" > ${SCRIPT_DIR}/.container-info-patches.txt
+
+  patches_echo "Setup has finished and Patches is running as expected!"
+
+  read -n 1 -s -r -p $'\033[1;35mPlease ensure ports 80, 443, and 8080 are open on your firewall.
+Port 80 will redirect to port 443. Port 8080 is used to host an HTTP server for
+servicing OME hosts. If you do not open these ports, the service will not work.
+Press any key to continue...\033[0m'
+
+
+  echo 
+
+  ascii_art=$(cat << "EOF"
+   ___             _               _ __                          
+  / __|    ___    | |_    _  _    | '_ \                         
+  \__ \   / -_)   |  _|  | +| |   | .__/                         
+  |___/   \___|   _\__|   \_,_|   |_|__                          
+_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|                         
+"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'                         
+   ___                     _ __     _              _             
+  / __|    ___    _ __    | '_ \   | |     ___    | |_     ___   
+ | (__    / _ \  | '  \   | .__/   | |    / -_)   |  _|   / -_)  
+  \___|   \___/  |_|_|_|  |_|__   _|_|_   \___|   _\__|   \___|  
+_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""| 
+"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'  
+EOF
+)
+
+  print_ascii_art "$ascii_art"
+      
+}
+
+# import_keys is responsible for importing certificates and keys for Patches
+#
+# Parameters:
+#   If two arguments are provided:
+#     arg1: The root CA public certificate (and optionally private key) in PEM format.
+#     arg2: The server private key/public certificate in PEM format.
+#
+#   If one argument is provided:
+#     arg1: The file path to a PKCS file which includes the root CA public certificate and the server's public certificate/private key.
+#
+# Environment Variables:
+#   CERT_DIRECTORY: Path to the certificate directory
+#   ROOT_CERT_DIRECTORY: Path to the root certificate directory
+#   TOP_DIR: Path to the top-level directory
+#   SCRIPT_DIR: Path to the directory containing the script
+#
+# Returns:
+#   None
+#
+# Exits:
+#   1: If the number of arguments is less than 1 or too many arguments are provided
+#
+function import_keys() {
+
+  if [[ "$#" -lt 2 ]]; then
+    patches_echo "Error: import-keys takes arguments in two formats. The first is the root CA public certificate (and optionally private key) in PEM format and the server private key/public certificate in PEM format. The second is a single argument containing the file path to a PKCS file which includes the root CA public certificate and the server's public certificate/private key. Exiting." --error
+    exit 1
+  fi
+
+  shift
+
+  # Make sure any old containers are cleaned up
+  podman rm -f import-keys || true
+
+  echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" > ${TOP_DIR}/.patches-import-keys
+  echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-import-keys
+
+  if [[ "$#" -eq 2 ]]; then
+    root_ca_public_key="$1"
+    server_key="$2"
+
+    # Check if server_key is an absolute path
+    if [[ ! "$server_key" = /* ]]; then
+      patches_echo "Error: Server key path must be an absolute path. This command does not accept relative paths." --error
+      exit 1
+    fi
+
+    # Check if root_ca_public_key is an absolute path
+    if [[ ! "$root_ca_public_key" = /* ]]; then
+      patches_echo "Error: Root CA public key path must be an absolute path. This command does not accept relative paths." --error
+      exit 1
+    fi
+
+    # Copy server key to CERT_DIRECTORY if the target and source are different
+    if [[ "${server_key}" != "${TOP_DIR}/${CERT_DIRECTORY}/$(basename "${server_key}")" ]]; then
+      cp -f "${server_key}" "${TOP_DIR}/${CERT_DIRECTORY}"
+    fi
+
+    # Copy root CA public key to CERT_DIRECTORY/ROOT_CERT_DIRECTORY if the target and source are different
+    if [[ "${root_ca_public_key}" != "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/$(basename "${root_ca_public_key}")" ]]; then
+      cp -f "${root_ca_public_key}" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
+    fi
+
+    echo "server_pem_file=/patches/${CERT_DIRECTORY}/${server_pem_file}" >> ${TOP_DIR}/.patches-import-keys
+    echo "root_ca_pem_file=/patches/${CERT_DIRECTORY}/${root_ca_pem_file}" >> ${TOP_DIR}/.patches-import-keys
+
+    podman run \
+      --name import-keys \
+      -it \
+      --env-file ${TOP_DIR}/.patches-import-keys \
+      --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+      --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
+      --entrypoint /app/import_keys_entrypoint.sh \
+      localhost/dell/patches-python:latest
+  elif [[ "$#" -eq 1 ]]; then
+    pkcs_file="$1"
+
+    patches_read "Enter the password for your PKCS#12 file. If there is no password, leave this empty." --password
+
+    if [[ -n "$RETURN_VALUE" ]]; then
+      pkcs_password="$RETURN_VALUE"
+    fi
+
+    echo "pkcs_file=/patches/${CERT_DIRECTORY}/$(basename ${pkcs_file})" >> ${TOP_DIR}/.patches-import-keys
+
+    # Check if pkcs_file is an absolute path
+    if [[ ! "$pkcs_file" = /* ]]; then
+      patches_echo "Error: PKCS file path must be an absolute path. This command does not accept relative paths." --error
+      exit 1
+    fi
+
+    # Copy PKCS file to CERT_DIRECTORY if the target and source are different
+    if [[ "${pkcs_file}" != "${TOP_DIR}/${CERT_DIRECTORY}/$(basename "${pkcs_file}")" ]]; then
+      cp -f "${pkcs_file}" "${TOP_DIR}/${CERT_DIRECTORY}"
+    fi
+
+    # Add PKCS_PASSWORD as environment variable if pkcs_password is not empty
+    # The syntax ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} checks if pkcs_password is not empty
+    # If it is not empty, it adds the option "--env PKCS_PASSWORD=<value>" to the command
+    podman run \
+      --name import-keys \
+      -it \
+      --env-file ${TOP_DIR}/.patches-import-keys \
+      ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} \
+      --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+      --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
+      --entrypoint /app/import_keys_entrypoint.sh \
+      localhost/dell/patches-python:latest
+
+  else
+    patches_echo "Too many arguments provided to import-keys. import-keys command requires one or two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
+  fi
+
+  # Cleanup the container
+  podman rm -f import-keys || true
+
+  if ask_yes_no "Do you want to run setup now to install your keys? If you do not run setup the keys will not be applied to Patches until you next run setup."; then
+    
+    # Reparse the YAML file because it has been updated
+    eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
+
+    patches_setup
+  fi
+}
+
+function validate_certs() {
+
+  # Make sure any old containers are cleaned up
+  podman rm -f import-keys || true
+
+  echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" > ${TOP_DIR}/.patches-import-keys
+  echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-import-keys
+  echo "server_pem_file=/patches/${CERT_DIRECTORY}/${2}" >> ${TOP_DIR}/.patches-import-keys
+  echo "root_ca_pem_file=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${1}" >> ${TOP_DIR}/.patches-import-keys
+  echo "VALIDATE=true" >> ${TOP_DIR}/.patches-import-keys
+
+  podman run \
+    --name import-keys \
+    -it \
+    --env-file ${TOP_DIR}/.patches-import-keys \
+    --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+    --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
+    --entrypoint /app/import_keys_entrypoint.sh \
+    localhost/dell/patches-python:latest
+
+  # Make sure any old containers are cleaned up
+  podman rm -f import-keys || true
+}
+
 ################################################################################
 # Main program                                                                 #
 ################################################################################
@@ -910,6 +1379,7 @@ opts=$(getopt \
   -o h \
   --longoptions "debug" \
   --longoptions "continuous" \
+  --longoptions "container:" \
   -- "$@")
 if [[ $? -ne 0 ]]; then
   opts="-h"
@@ -939,7 +1409,8 @@ while [[ $# -gt 0 ]]; do
       echo
       echo "Flags:"
       echo "  --debug      Runs the application in debug mode. Can only be used with the setup command. This is meant for developer use."
-      echo "  --continuous Runs the 'start' command continuously, retrying failed services. This is primarily meant for internal use"
+      echo "  --continuous Runs the 'start' command continuously, retrying failed services. This is primarily meant for developer use"
+      echo "  --container  Specifies the name of a specific container to build (optional)"
       echo
       exit 0
       ;;
@@ -949,6 +1420,10 @@ while [[ $# -gt 0 ]]; do
     --continuous)
       CONTINUOUS="TRUE"
       ;;
+    --container)
+      shift
+      CONTAINER_NAME="$1"
+      ;;
     --)
       shift
       break
@@ -956,6 +1431,7 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
 
 
 # Create the bridge network if it doesn't exist
@@ -1042,278 +1518,15 @@ case $1 in
 
   build)
 
-    patches_build
+    patches_build ${CONTAINER_NAME}
 
     ;;
 
   setup)
 
-      # Check if the current operating system is Rocky Linux
+    patches_setup
 
-      if [ -f /etc/os-release ]; then
-          source /etc/os-release
-          if [[ $ID == "rocky" ]]; then
-            patches_echo "Running on Rocky Linux..."
-          else
-            if ! ask_yes_no "You are not running Rocky Linux. Patches has only been tested on Rocky Linux and we recommend using Rocky Linux. While Patches was designed to run on all *nix flavors, you may run into errors unique to your OS. Do you want to continue?"; then
-              patches_echo "Exiting" --error
-              exit 1
-            fi
-          fi
-      else
-          patches_echo "Warning: Unable to determine the operating system." --error
-      fi
-
-      # Check if PATCHES_ADMINISTRATOR is empty
-      if [ -z "$PATCHES_ADMINISTRATOR" ]; then
-          patches_read "Please enter the name of the administrator for patches. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel."
-          administrator_name=${RETURN_VALUE}
-
-          # Update the PATCHES_ADMINISTRATOR line in the config file
-          sed -i "s/^PATCHES_ADMINISTRATOR:.*/PATCHES_ADMINISTRATOR: $administrator_name/" "${SCRIPT_DIR}/config.yml"
-
-          patches_echo "Administrator name updated in the config file."
-      else
-          patches_echo "PATCHES_ADMINISTRATOR is already set to: $PATCHES_ADMINISTRATOR"
-      fi
-
-      # Delete any old containers still running on the server
-      cleanup_containers
-
-      # Setup environment variables for the patches backend
-      > ${TOP_DIR}/.patches-backend
-      echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
-      echo "DEBUG=$DEBUG" >> ${TOP_DIR}/.patches-backend
-      echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
-      echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
-      echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
-      echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-backend"
-      echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-backend"
-      echo "DOWNLOAD_PATH=/patches/download" >> "${TOP_DIR}/.patches-backend"
-      echo "XML_PATH=/patches/xml" >> "${TOP_DIR}/.patches-backend"
-      echo "PARSED_PATH=/patches/xml/parsed" >> "${TOP_DIR}/.patches-backend"
-      echo "REPO_PATH=/patches/xml/" >> "${TOP_DIR}/.patches-backend"
-      echo "SSL_ON=0" >> "${TOP_DIR}/.patches-backend" # This is for the connection to postgresql internally
-      source ${TOP_DIR}/.patches-backend
-
-      # Setup the environment variables for the postgres container
-      > ${TOP_DIR}/.patches-psql
-      echo "POSTGRES_USER=${PSQL_USERNAME}" >> ${TOP_DIR}/.patches-psql
-      echo "POSTGRES_PASSWORD=${PSQL_PASSWORD}" >> ${TOP_DIR}/.patches-psql
-      echo "POSTGRES_DB=${POSTGRES_DB}" >> ${TOP_DIR}/.patches-psql
-
-      # Setup environment variables for the patches frontend
-      > ${TOP_DIR}/.patches-frontend
-      # TODO This needs to be updated. See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634186
-      echo "NODE_OPTIONS=--openssl-legacy-provider" >> ${TOP_DIR}/.patches-frontend
-      echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-frontend
-      echo "PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-frontend
-
-      systemctl enable --now --user podman podman.socket
-
-      # Check to make sure the user has added the repository files
-      xml_files=(`find ./repos/xml -maxdepth 2 -name "*.xml"`)
-      if [ ${#xml_files[@]} -gt 0 ]; then 
-          echo true 
-      else
-          patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case."
-
-          if ask_yes_no "Do you want to use Dell Repository Manager to pull the Enterprise Catalog automatically?"; then
-            # Check if the DRM container image already exists
-            build_drm
-          else
-              patches_echo "We cannot continue without the repository. Exiting." --error
-              exit 1
-          fi
-      fi
-
-      # Configure Patches interfaces
-
-      patches_echo "Checking interfaces..."
-      # Check for invalid interfaces and tell the user we ignored them and why we ignored them
-      for iface in $(ip addr | awk '/state/ {print $2}' | sed 's/://; /^lo/d' | grep -v "${interfaces}")
-      do
-        patches_echo "Ignored $iface because it is not in an UP/UP state with an assigned IPv4 address."
-      done
-
-      # get list of physical interfaces in an UP/UP state with an assigned IPv4 address
-      interfaces=$(ip addr | awk '/state UP/ {print $2}' | sed 's/://; /^lo/d' | xargs -I {} sh -c 'if ip addr show {} | grep -q "inet "; then echo {}; fi')
-
-      if [ -z "${interfaces}" ]; then
-        patches_echo "No interfaces found with an assigned IPv4 address and UP/UP state."
-        exit 1
-      fi
-
-      # Prompt the user to enter an interface
-      patches_echo "List of available interfaces:"
-      PS3=$(echo -e "\033[1;34mEnter the number of the interface you want to use: \033[0m")
-      select interface in ${interfaces}
-      do
-        if [ -z "$interface" ]; then
-          patches_echo "Invalid input. Please enter a number from 1 to $(echo ${interfaces} | wc -w)."
-        else
-          ipv4_address=$(ip addr show $interface | awk '$1 == "inet" {gsub(/\/.*$/, "", $2); print $2}')
-          patches_echo "Using interface $interface with IPv4 address $ipv4_address."
-          break
-        fi
-      done
-
-      # Create the nginx environment variable configuration file
-      echo "IPV4_ADDRESS=${ipv4_address}" > "${TOP_DIR}/.patches-nginx"
-      echo "INTERFACE=${interface}" >> "${TOP_DIR}/.patches-nginx"
-      echo "SERVER_NAME=${SERVER_NAME}" >> "${TOP_DIR}/.patches-nginx"
-      echo "DOMAIN=${DOMAIN}" >> "${TOP_DIR}/.patches-nginx"
-      echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
-      echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
-      echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-      echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-      echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.crt" >> "${TOP_DIR}/.patches-nginx"
-      echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-      echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
-      echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
-
-      # Before continuing we need to make sure that all the build containers are present
-      patches_echo "Making sure Patches build has already run..."
-      images=("localhost/dell/patches-base" "localhost/dell/patches-python")
-      missing_images=()
-
-      for image in "${images[@]}"; do
-        if ! podman image exists "$image" >/dev/null 2>&1; then
-          missing_images+=("$image")
-        fi
-      done
-
-      if [[ ${#missing_images[@]} -gt 0 ]]; then
-        patches_echo "There are missing Patches images. Running build to build the images..."
-        patches_build
-      else
-        patches_echo "Patches images alreday present."
-      fi
-
-      # Remove any old containers
-      podman rm -f -t 0 'patches-configure-nginx'
-
-      # Generate the nginx configuration
-      patches_echo "Generating nginx configuration..."
-      podman run \
-        --name patches-configure-nginx \
-        --env-file ${TOP_DIR}/.patches-nginx \
-        --volume ${SCRIPT_DIR}/python_container/nginx.conf.j2:/app/nginx.conf.j2:Z \
-        --volume ${SCRIPT_DIR}/nginx_config:/app/nginx_config:Z  \
-        --entrypoint /app/configure_nginx_entrypoint.sh \
-        localhost/dell/patches-python:latest
-
-      # Remove the configuration container after it is finished
-      podman rm -f -t 0 'patches-configure-nginx'
-
-      # Setup environment variables for the certificate generator
-      echo "IPV4_ADDRESS=${ipv4_address}" > ${TOP_DIR}/.patches-certificate-generator
-      echo "ROOT_CERT_DIRECTORY=${ROOT_CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
-      echo "CERT_DIRECTORY=${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
-
-      # Check if keys already exist in the cert directory and if they do prompt the user whether they want to continue
-      # with key generation.
-
-      # Check if any pem files exist in the directory
-      if ! [[ $(find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -name "*.pem" | wc -l) -gt 0 ]]; then
-        if ! ask_yes_no "There are files present in ${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY} but none of them end in the .pem extension. This program requires the CA cert in .pem format with at least the public key present. The private key does not have to be present. Do you want to continue by generating completely new keys? Say no to end Patches installation."; then
-          patches_echo "Terminating installation" --error
-          exit 1
-        fi
-    fi
-
-      # Check if any key files exist in the primary certificate directory
-      keys_primary_dir=$(find "${TOP_DIR}/${CERT_DIRECTORY}" -type f -name "*.key" -print -quit)
-
-      # Check if any key files exist in the root certificate directory
-      keys_root_dir=$(find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -name "*.pem" -print -quit)
-
-      # Check if any key files exist and if the root CA key file is missing
-      if [[ -n "${keys_primary_dir}" || -n "${keys_root_dir}" ]]; then
-        if [[ ! -f "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.pem" ]]; then
-          if ask_yes_no "There is a PEM file present in the root certificate in the ${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY} directory. However, in config.yml you have ROOT_CA_NAME set to ${ROOT_CA_NAME} and we do not see a ${ROOT_CA_NAME}.pem present in ${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}. Do you want to generate new keys? If not, the program will exit."; then
-            patches_echo "Continuing with certificate/key generation..."
-            generate_certificates
-          else
-            patches_echo "We cannot continue if ${ROOT_CA_NAME}.pem does not exist. Exiting setup." --error
-            exit 1
-          fi
-        fi
-        if [ "$keys_primary_dir" = true ]; then
-          if ask_yes_no "It appears keys already exist in the ${CERT_DIRECTORY}. Do you want to continue with certificate/key generation? Any keys defined in config.yml will overwrite keys/certs with corresponding names in ${CERT_DIRECTORY}."; then
-            patches_echo "Continuing with certificate/key generation..."
-            generate_certificates
-          else
-            patches_echo "Certificate/key generation skipped."
-          fi
-        fi
-      else
-        patches_echo "No existing keys found. Proceeding with certificate/key generation..."
-        generate_certificates
-      fi
-
-      run_postgresql
-
-      run_patches_services
-
-      run_nginx
-
-      podman run --restart=always -dit --name patches-httpd --publish 8080:80 --volume ${TOP_DIR}/repos/xml/:/usr/local/apache2/htdocs/:z docker.io/library/httpd:${HTTPD_VERSION}
-
-      patches_echo "Checking if the server is running..."
-
-      if [[ -z $(podman inspect --format '{{.State.Running}}' patches-psql | grep -i true) ]]; then
-          patches_echo  "It appears that the PSQL server (patches-psql) container failed to deploy correctly. Try checking its status with 'podman logs patches-psql'." --error
-          exit 1
-      fi
-
-      if [[ -z $(podman inspect --format '{{.State.Running}}' patches-backend | grep -i true) ]]; then
-          patches_echo  "It appears that the Patches backend (patches-backend) container failed to deploy correctly. Try checking its status with 'podman logs patches-backend'." --error
-          exit 1
-      fi
-
-      if [[ -z $(podman inspect --format '{{.State.Running}}' patches-frontend | grep -i true) ]]; then
-          patches_echo  "It appears that the Patches frontend (patches-frontend) container failed to deploy correctly. Try checking its status with 'podman logs patches-frontend'." --error
-          exit 1
-      fi
-
-      # SQL script for setting up admin user
-      patches_echo "Configuring ${PATCHES_ADMINISTRATOR} as the administrator for the PostgreSQL database..."
-      configure_administrator "${PATCHES_ADMINISTRATOR}"
-
-      enable_systemd_service
-
-      echo "setup_complete" > ${SCRIPT_DIR}/.container-info-patches.txt
-
-      patches_echo "Setup has finished and Patches is running as expected!"
-
-      read -n 1 -s -r -p $'\033[1;35mPlease ensure ports 80, 443, and 8080 are open on your firewall.
-Port 80 will redirect to port 443. Port 8080 is used to host an HTTP server for
-servicing OME hosts. If you do not open these ports, the service will not work.
-Press any key to continue...\033[0m'
-
-
-      echo 
-
-      ascii_art=$(cat << "EOF"
-   ___             _               _ __                          
-  / __|    ___    | |_    _  _    | '_ \                         
-  \__ \   / -_)   |  _|  | +| |   | .__/                         
-  |___/   \___|   _\__|   \_,_|   |_|__                          
-_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|                         
-"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'                         
-   ___                     _ __     _              _             
-  / __|    ___    _ __    | '_ \   | |     ___    | |_     ___   
- | (__    / _ \  | '  \   | .__/   | |    / -_)   |  _|   / -_)  
-  \___|   \___/  |_|_|_|  |_|__   _|_|_   \___|   _\__|   \___|  
-_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""| 
-"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'  
-EOF
-)
-
-      print_ascii_art "$ascii_art"
-
-      ;;
+    ;;
 
   stop)
 
@@ -1435,74 +1648,7 @@ EOF
 
   import-keys)
 
-    if [[ "$#" -lt 2 ]]; then
-      patches_echo "Error: import-keys takes arguments in two formats. The first is the root CA public certificate (and optionally private key) in PEM format and the server private key/public certificate in PEM format. The second is a single argument containing the file path to a PKCS file which includes the root CA public certificate and the server's public certificate/private key. Exiting." --error
-      exit 1
-    fi
-
-    shift
-
-    # Make sure any old containers are cleaned up
-    podman rm -f import-keys || true
-
-    # Set NODE_ENV to development for debug mode
-    echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" > ${TOP_DIR}/.patches-import-keys
-    echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-import-keys
-
-    if [[ "$#" -eq 2 ]]; then
-      root_ca_public_key="$1"
-      server_key="$2"
-
-      # Copy server key to CERT_DIRECTORY
-      cp -f "${server_key}" "${TOP_DIR}/${CERT_DIRECTORY}"
-
-      # Copy root CA public key to CERT_DIRECTORY/ROOT_CERT_DIRECTORY
-      cp -f "${root_ca_public_key}" "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
-
-      echo "server_pem_file=/patches/${CERT_DIRECTORY}/${server_pem_file}" >> ${TOP_DIR}/.patches-import-keys
-      echo "root_ca_pem_file=patches/${CERT_DIRECTORY}/${root_ca_pem_file}" >> ${TOP_DIR}/.patches-import-keys
-
-      podman run \
-        --name import-keys \
-        -it \
-        --env-file ${TOP_DIR}/.patches-import-keys \
-        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
-        --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
-        --entrypoint /app/import_keys_entrypoint.sh \
-        localhost/dell/patches-python:latest
-    elif [[ "$#" -eq 1 ]]; then
-      pkcs_file="$1"
-
-      patches_read "Enter the password for your PKCS#12 file. If there is no password, leave this empty." --password
-
-      if [[ -n "$RETURN_VALUE" ]]; then
-        pkcs_password="$RETURN_VALUE"
-      fi
-
-      echo "pkcs_file=/patches/${CERT_DIRECTORY}/$(basename ${pkcs_file})" >> ${TOP_DIR}/.patches-import-keys
-
-      # Copy PKCS file to CERT_DIRECTORY
-      cp -f "${pkcs_file}" "${TOP_DIR}/${CERT_DIRECTORY}"
-
-      # Add PKCS_PASSWORD as environment variable if pkcs_password is not empty
-      # The syntax ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} checks if pkcs_password is not empty
-      # If it is not empty, it adds the option "--env PKCS_PASSWORD=<value>" to the command
-      podman run \
-        --name import-keys \
-        -it \
-        --env-file ${TOP_DIR}/.patches-import-keys \
-        ${pkcs_password:+--env PKCS_PASSWORD="$pkcs_password"} \
-        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
-        --volume ${SCRIPT_DIR}/config.yml:/app/config.yml:Z \
-        --entrypoint /app/import_keys_entrypoint.sh \
-        localhost/dell/patches-python:latest
-
-    else
-      patches_echo "Too many arguments provided to import-keys. import-keys command requires one or two arguments - the root CA public key in PEM format and the server private/public key in PEM format, or a single argument containing the file path to a PKCS file which includes the root CA public key and the server's public/private key. Exiting." --error
-    fi
-
-    # Cleanup the container
-    podman rm -f import-keys || true
+    import_keys "$@"
 
     ;;
 
