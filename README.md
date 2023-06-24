@@ -214,7 +214,9 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 
 The admin panel is available to the user configured as PATCHES_ADMINISTRATOR. You can also add additional admin users with `bash patches/podman-build/patches.sh add-admin <username>`
 
-TODO - add usage instructions
+To access the admin panel you must be using a cert whose common name matches an administrator. When you do this the "Admin Dashboard" button will appear in the top right of the UI.
+
+![](images/2023-06-24-19-30-51.png)
 
 ## OpenManage Enterprise (OME)
 
