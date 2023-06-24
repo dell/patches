@@ -49,55 +49,9 @@ export default () => {
         <div className="container">
           <div className="footer-links">
             <a
-              href="https://www.dell.com/learn/us/en/uscorp1/site-terms-of-use-copyright?ref=footer"
               className=""
             >
-              © 2020 Dell
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/terms-of-sale?ref=footer"
-              className=""
-            >
-              Terms of Sale
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/policies-privacy?ref=footer"
-              className=""
-            >
-              Privacy Statement
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/policies-ads-and-emails?ref=footer"
-              className=""
-            >
-              Ads &amp; Emails
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/terms?ref=footer"
-              className=""
-            >
-              Legal &amp; Regulatory
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/cr?ref=footer"
-              className=""
-            >
-              Corporate Social Responsibility
-            </a>
-            <a
-              href="https://www.dell.com/learn/us/en/uscorp1/corporate~corp-comm~en/documents~dell-california-trafficking.pdf?ref=footer"
-              className=""
-            >
-              Anti-Slavery &amp; Human Trafficking
-            </a>
-            <a
-              href="https://www.dell.com/support/contents/us/en/04/category/contact-information?c=us&amp;l=en&amp;ref=footer"
-              className=""
-            >
-              Contact Us
-            </a>
-            <a href="#" className="toolbar_feedback opinionlabhtml">
-              Feedback
+              © 2023 Dell
             </a>
           </div>
         </div>

@@ -1094,22 +1094,7 @@ function patches_setup() {
   echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
 
   # Before continuing we need to make sure that all the build containers are present
-  patches_echo "Making sure Patches build has already run..."
-  images=("localhost/dell/patches-base" "localhost/dell/patches-python")
-  missing_images=()
-
-  for image in "${images[@]}"; do
-    if ! podman image exists "$image" >/dev/null 2>&1; then
-      missing_images+=("$image")
-    fi
-  done
-
-  if [[ ${#missing_images[@]} -gt 0 ]]; then
-    patches_echo "There are missing Patches images. Running build to build the images..."
-    patches_build
-  else
-    patches_echo "Patches images alreday present."
-  fi
+  check_images
 
   # Remove any old containers
   podman rm -f -t 0 'patches-configure-nginx'
@@ -1252,6 +1237,8 @@ EOF
 #
 function import_keys() {
 
+  check_images
+
   if [[ "$#" -lt 2 ]]; then
     patches_echo "Error: import-keys takes arguments in two formats. The first is the root CA public certificate (and optionally private key) in PEM format and the server private key/public certificate in PEM format. The second is a single argument containing the file path to a PKCS file which includes the root CA public certificate and the server's public certificate/private key. Exiting." --error
     exit 1
@@ -1391,6 +1378,42 @@ function validate_certs() {
   # Make sure any old containers are cleaned up
   podman rm -f import-keys || true
 }
+
+# check_images is responsible for checking if the required Patches images exist.
+#
+# Parameters:
+#   None
+#
+# Environment Variables:
+#   None
+#
+# Returns:
+#   None
+#
+check_images() {
+  # Making sure Patches build has already run...
+  patches_echo "Making sure Patches build has already run..."
+
+  # List of required Patches images
+  images=("localhost/dell/patches-base" "localhost/dell/patches-python")
+  missing_images=()
+
+  # Checking if each image exists
+  for image in "${images[@]}"; do
+    if ! podman image exists "$image" >/dev/null 2>&1; then
+      missing_images+=("$image")
+    fi
+  done
+
+  # Handling missing images
+  if [[ ${#missing_images[@]} -gt 0 ]]; then
+    patches_echo "There are missing Patches images. Running build to build the images..."
+    patches_build
+  else
+    patches_echo "Patches images already present."
+  fi
+}
+
 
 ################################################################################
 # Main program                                                                 #
