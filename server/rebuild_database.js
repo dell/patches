@@ -1,4 +1,5 @@
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
+const { debug } = require("console");
 const fs = require("fs");
 const path = require("path");
 const parsed_path = process.env.PARSED_PATH;
@@ -130,6 +131,13 @@ async function pushManifestDatabase(parsedInputs, trx) {
         }
       }
 
+      // TODO - The while loop doesn't work. The line 
+      // delete insertPayload[key]; will run correctly and delete not 
+      // compliant values but by the time componentInsertResults reruns, 
+      // the value will return. I do not know why. 
+      // https://github.com/grantcurell/patches/issues/32 
+      delete insertPayload.f_mp_wrappers; 
+
       // This for loop handles the case that a new bundle key is added that
       // we don't support. It will be handled gracefully and not cause the 
       // import to fail.
@@ -184,6 +192,8 @@ async function pushManifestDatabase(parsedInputs, trx) {
                 }
               });
             });
+          } else {
+            console.error(`Error: ${error.message}`);
           }
         }
       }

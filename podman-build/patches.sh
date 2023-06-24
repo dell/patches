@@ -334,7 +334,7 @@ function cleanup_containers() {
 function reset_database() {
   patches_echo "Reinitializing database by clearing the ${TOP_DIR}/repos/xml/parsed/ directory and resetting the PSQL database..."
   rm -rf ${TOP_DIR}/repos/xml/parsed/*
-  podman exec -it patches-backend sh -c '/home/node/app/node_modules/knex/bin/cli.js migrate:rollback'
+  podman exec -it patches-backend sh -c '/home/node/app/node_modules/knex/bin/cli.js migrate:rollback --knexfile /home/node/app/server/knexfile.js'
   podman stop patches-backend
   podman start patches-backend
 }
@@ -730,33 +730,37 @@ function run_patches_services() {
     # But instead go to /home/node/app. This is because we are overwriting the files
     # and putting them in the home directory. If you go to server you will get
     # the base code instead of the code you are editing on the filesystem.
+    podman rm -f patches-backend &&
     podman run \
-      --name patches-backend \
-      --env-file ${TOP_DIR}/.patches-backend \
-      --volume ${TOP_DIR}/server/data:/home/node/app/data:Z \
-      --volume ${TOP_DIR}/server/routes:/home/node/app/routes:Z \
-      --volume ${TOP_DIR}/server/db.js:/home/node/app/db.js:Z \
-      --volume ${TOP_DIR}/server/index.js:/home/node/app/index.js:Z \
-      --volume ${TOP_DIR}/server/knexfile.js:/home/node/app/knexfile.js:Z \
-      --volume ${TOP_DIR}/server/rebuild_database.js:/home/node/app/rebuild_database.js:Z \
-      --volume ${TOP_DIR}/server/util.js:/home/node/app/util.js:Z \
-      --volume ${TOP_DIR}/server/seeds/:/home/node/app/seeds:Z \
-      --volume ${TOP_DIR}/package.json:/home/node/app/package.json:Z \
-      --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:z \
-      --volume ${SCRIPT_DIR}/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:Z \
-      --volume ${TOP_DIR}/migrations:/home/node/app/migrations:Z \
-      --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
-      --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
-      --publish "9229:9229" \
-      --network host-bridge-net \
-      --detach \
-      localhost/dell/patches-base:latest \
-      sh -c 'node --inspect-brk=0.0.0.0:9229 /home/node/app/index.js' # You will need to update this with what you want to debug
+        --name patches-backend \
+        --env-file ${TOP_DIR}/.patches-backend \
+        --volume ${TOP_DIR}/server/data:/home/node/app/data:Z \
+        --volume ${TOP_DIR}/server/routes:/home/node/app/server/routes:Z \
+        --volume ${TOP_DIR}/server/db.js:/home/node/app/server/db.js:Z \
+        --volume ${TOP_DIR}/server/index.js:/home/node/app/index.js:Z \
+        --volume ${TOP_DIR}/server/knexfile.js:/home/node/app/server/knexfile.js:Z \
+        --volume ${TOP_DIR}/server/rebuild_database.js:/home/node/app/server/rebuild_database.js:Z \
+        --volume ${TOP_DIR}/server/util.js:/home/node/app/server/util.js:Z \
+        --volume ${TOP_DIR}/server/seeds/:/home/node/app/server/seeds:Z \
+        --volume ${TOP_DIR}/package.json:/home/node/app/package.json:Z \
+        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:z \
+        --volume ${SCRIPT_DIR}/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:Z \
+        --volume ${TOP_DIR}/migrations:/home/node/app/migrations:Z \
+        --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
+        --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
+        --publish "9229:9229" \
+        --network host-bridge-net \
+        -it \
+        localhost/dell/patches-base:latest \
+        /bin/bash
 
       # These are the three commands that need to run. You cannot debug them all
       # at once or at least I haven't found a way. I have to do them one by one
       # node --inspect-brk=0.0.0.0:9229 /home/node/app/node_modules/knex/bin/cli.js migrate:latest
-      # node --inspect-brk=0.0.0.0:9229 server/index.js
+      # node --inspect-brk=0.0.0.0:9229 server/index.js --knexfile /home/node/app/server/knexfile.js
+      # If you want to rollback use /home/node/app/node_modules/knex/bin/cli.js migrate:rollback --knexfile /home/node/app/server/knexfile.js
+      # All three combined:
+      # /home/node/app/node_modules/knex/bin/cli.js migrate:rollback --knexfile /home/node/app/server/knexfile.js && node /home/node/app/node_modules/knex/bin/cli.js migrate:latest --knexfile /home/node/app/server/knexfile.js && node --inspect-brk=0.0.0.0:9229 server/index.js
 
       podman run \
         --name patches-frontend \
