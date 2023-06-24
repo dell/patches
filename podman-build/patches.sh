@@ -621,6 +621,9 @@ function generate_certificates() {
 
   # Make sure any old containers are cleaned up
   podman rm -f patches-certificate-generator || true
+
+  # Reparse the YAML file because it has been updated
+  eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
 }
 
 # wait_for_postgresql - waits for PostgreSQL to start within a timeout duration
@@ -990,14 +993,16 @@ function patches_setup() {
   # Delete any old containers still running on the server
   cleanup_containers
 
+  # TODO - See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
+
   # Setup environment variables for the patches backend
   > ${TOP_DIR}/.patches-backend
   echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
   echo "DEBUG=$DEBUG" >> ${TOP_DIR}/.patches-backend
   echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
   echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
-  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
-  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${BACKEND_CERT_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-backend"
+  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
+  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-backend"
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-backend"
   echo "DOWNLOAD_PATH=/patches/download" >> "${TOP_DIR}/.patches-backend"
   echo "XML_PATH=/patches/xml" >> "${TOP_DIR}/.patches-backend"
@@ -1068,6 +1073,8 @@ function patches_setup() {
     fi
   done
 
+  # TODO - https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
+
   # Create the nginx environment variable configuration file
   echo "IPV4_ADDRESS=${ipv4_address}" > "${TOP_DIR}/.patches-nginx"
   echo "INTERFACE=${interface}" >> "${TOP_DIR}/.patches-nginx"
@@ -1077,7 +1084,7 @@ function patches_setup() {
   echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.crt" >> "${TOP_DIR}/.patches-nginx"
+  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
   echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
   echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
@@ -1144,7 +1151,6 @@ function patches_setup() {
       else
         generate_certificates
       fi
-      exit 1
     fi
   else
     if ! ask_yes_no "No existing certificates configured. Type yes to continue with automatic certificate generation. Type no to terminate patches. You can import existing certificates with \`bash patches.sh import-keys <args>\`"; then
@@ -1255,6 +1261,18 @@ function import_keys() {
   echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" > ${TOP_DIR}/.patches-import-keys
   echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-import-keys
 
+  # Remove any old values in config.yml
+  # Define the keys to search and remove the values
+  keys=("ROOT_CA_PEM:" "SERVER_PEM:" "PKCS_FILE:")
+
+  # Iterate over each key
+  for key in "${keys[@]}"; do
+    # Search for the key and remove the value
+    sed -i "s/\($key\).*$/\1/" "${SCRIPT_DIR}/config.yml"
+  done
+
+  mkdir -p "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}"
+
   if [[ "$#" -eq 2 ]]; then
     root_ca_public_key="$1"
     server_key="$2"
@@ -1345,6 +1363,9 @@ function import_keys() {
 
 function validate_certs() {
 
+  # Reparse the YAML file because it has been updated
+  eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
+
   # Make sure any old containers are cleaned up
   podman rm -f import-keys || true
 
@@ -1386,31 +1407,46 @@ if [[ $? -ne 0 ]]; then
   echo
 fi
 
+
+# Color codes
+COMMAND_COLOR='\e[1;34m'  # Blue
+EXPLANATION_COLOR='\e[0;37m'  # Light gray
+
+# Help menu
 eval set -- "$opts"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h)
-      echo "Usage:  $(basename "$0") (command) [--debug]"
+      echo -e "Usage:  $(basename "$0") (command) [--debug|--continuous|--container]"
       echo
-      echo "Args:"
-      echo "  rm         Deletes all Patches containers, container images, and volumes."
-      echo "  pull-patches Forces a fresh pull of all available patches via DRM"
-      echo "  build      Builds the required containers for Patches"
-      echo "  setup      Runs Patches setup"
-      echo "  start      Start up containerized automation server services"
-      echo "  stop       Stop services"
-      echo "  run        Allows you to run a command in the automation server container."
-      echo "  status     Get the status of all the component containers for Patches"
-      echo "  logs       Get the logs for all the Patches services. They will be written to ${TOP_DIR}/logs"
-      echo "  add-admin  Add an administrator to the admins list for the Patches database"
-      echo "  reset-database Reset the Patches database and reinitialize it."
-      echo "  install-service Install the Patches service so it will start on startup. (requires sudo)"
-      echo "  import-keys Import existing keys for use with Patches. It accepts one of two argument styles. The first expects two arguments, the first is the file path to a root CA's public key (and optionally private key) in PEM format. The second is the file path to the Patches server public and private key combined in PEM format. WARNING: This command will fail if the PEM files have import passwords. The second option is to pass the path to a PKCS#12 file containing your server's certificate/private key and the trust chain. The PKCS#12 file *can* contain a password."
+      echo -e "Args:"
+      echo -e "${COMMAND_COLOR}  rm${EXPLANATION_COLOR}         Deletes all Patches containers, container images, and volumes."
+      echo -e "${COMMAND_COLOR}  pull-patches${EXPLANATION_COLOR} Forces a fresh pull of all available patches via DRM"
+      echo -e "${COMMAND_COLOR}  build${EXPLANATION_COLOR}      Builds the required containers for Patches"
+      echo -e "${COMMAND_COLOR}  setup${EXPLANATION_COLOR}      Runs Patches setup"
+      echo -e "${COMMAND_COLOR}  start${EXPLANATION_COLOR}      Start up containerized automation server services"
+      echo -e "${COMMAND_COLOR}  stop${EXPLANATION_COLOR}       Stop services"
+      echo -e "${COMMAND_COLOR}  run${EXPLANATION_COLOR}        Allows you to run a command in the automation server container."
+      echo -e "${COMMAND_COLOR}  status${EXPLANATION_COLOR}     Get the status of all the component containers for Patches"
+      echo -e "${COMMAND_COLOR}  logs${EXPLANATION_COLOR}       Get the logs for all the Patches services. They will be written to \${TOP_DIR}/logs"
+      echo -e "${COMMAND_COLOR}  add-admin${EXPLANATION_COLOR}   Add an administrator to the admins list for the Patches database"
+      echo -e "${COMMAND_COLOR}  reset-database${EXPLANATION_COLOR} Reset the Patches database and reinitialize it."
+      echo -e "${COMMAND_COLOR}  generate-certificates${EXPLANATION_COLOR} Manually regenerate new certificates for the PKI infrastructure."
+      echo -e "${COMMAND_COLOR}  install-service${EXPLANATION_COLOR} Install the Patches service so it will start on startup. (requires sudo)"
+      echo -e "${COMMAND_COLOR}  import-keys${EXPLANATION_COLOR} Import existing keys for use with Patches. It accepts one of two argument styles."
+      echo -e "${EXPLANATION_COLOR}              The first expects two arguments, the first is the file path to a root CA's public key"
+      echo -e "${EXPLANATION_COLOR}              (and optionally private key) in PEM format. The second is the file path to the Patches"
+      echo -e "${EXPLANATION_COLOR}              server public and private key combined in PEM format. WARNING: This command will fail"
+      echo -e "${EXPLANATION_COLOR}              if the PEM files have import passwords. The second option is to pass the path to a"
+      echo -e "${EXPLANATION_COLOR}              PKCS#12 file containing your server's certificate/private key and the trust chain."
+      echo -e "${EXPLANATION_COLOR}              The PKCS#12 file *can* contain a password."
       echo
-      echo "Flags:"
-      echo "  --debug      Runs the application in debug mode. Can only be used with the setup command. This is meant for developer use."
-      echo "  --continuous Runs the 'start' command continuously, retrying failed services. This is primarily meant for developer use"
-      echo "  --container  Specifies the name of a specific container to build (optional)"
+      echo -e "Flags:"
+      echo -e "${COMMAND_COLOR}  --debug${EXPLANATION_COLOR}      Runs the application in debug mode. Can only be used with the setup command."
+      echo -e "${EXPLANATION_COLOR}               This is meant for developer use."
+      echo -e "${COMMAND_COLOR}  --continuous${EXPLANATION_COLOR}  Runs the 'start' command continuously, retrying failed services. This is primarily"
+      echo -e "${EXPLANATION_COLOR}               meant for developer use"
+      echo -e "${COMMAND_COLOR}  --container${EXPLANATION_COLOR}   Specifies the name of a specific container to build (optional)"
       echo
       exit 0
       ;;
@@ -1431,7 +1467,6 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-
 
 
 # Create the bridge network if it doesn't exist
@@ -1644,6 +1679,23 @@ case $1 in
 
       enable_systemd_service
 
+    ;;
+
+  generate-certificates)
+      if ask_yes_no "In order to generate new certificates you will also have to rerun the Patches setup. Do you want to continue?"; then
+
+        # Delete all files from CERT_DIRECTORY
+        find "${TOP_DIR}/${CERT_DIRECTORY}" -type f -delete
+
+        # Delete all files from ROOT_CERT_DIRECTORY
+        find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -delete
+
+        generate_certificates
+        patches_setup
+      else
+        patches_echo "Terminating."
+        exit 1
+      fi
     ;;
 
   import-keys)

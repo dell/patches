@@ -115,13 +115,6 @@ def validate_server_cert(server_cert_file, root_ca_cert_files):
         logger.error(f"Validation error: {str(e)}")
         exit(1)
 
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e.filename}")
-        exit(1)
-    except Exception as e:
-        logger.error(f"Validation error: {str(e)}")
-        exit(1)
-
 
 def verify_certificate_common_name(certificate_file, config_field_name):
     """Verify the common name field in a certificate.
@@ -148,16 +141,39 @@ def verify_certificate_common_name(certificate_file, config_field_name):
         common_name = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
 
         # Load config.yml
-        with open("config.yml", "r") as file:  # TODO - revert this
+        with open("config.yml", "r") as file:
             config_data = yaml.safe_load(file)
 
         config_value = config_data.get(config_field_name)
+        domain = config_data.get("DOMAIN", "")
 
-        if config_value and common_name != config_value:
+        if config_value and common_name != config_value + f".{domain}":
             # Prompt the user to update the corresponding field in config.yml
-            prompt = f"The common name in the certificate ({common_name}) does not match the expected value ({config_value}).\nDo you want to update {config_field_name} in config.yml to match the certificate? If you do not, this is a fatal error and the program will exit. You will need to fix the field manually."
+            prompt = f"The common name in the certificate ({common_name}) does not match the expected value " \
+                     f"({config_value + '.' + domain}).\nDo you want to update {config_field_name} in config.yml to " \
+                     f"match the certificate? If you do not, this is a fatal error and the program will exit. You " \
+                     f"will need to fix the field manually."
             if ask_yes_no(prompt):
-                return update_config_field(config_field_name, common_name)
+                # Check if the field name contains a DNS suffix and drop it
+                if '.' in common_name:
+                    logger.info(f"Confirming the DNS suffix in the common name {common_name} matches the value"
+                                f" of DOMAIN ({domain}) in config.yml...")
+                    if domain and not common_name.endswith(domain):
+                        prompt = (f"The DNS suffix in {common_name} does not match the DOMAIN value ({domain}). "
+                                  f"Do you want to update the value of DOMAIN to match {common_name}? If you do not"
+                                  f" this is a fatal error and the program will exit. You will need to fix the field"
+                                  f" manually.")
+                        if ask_yes_no(prompt):
+                            parts = common_name.split(".")
+                            # Get just the DNS suffix portion (everything after the name)
+                            dns_suffix = ".".join(parts[1:])
+                            update_config_field('DOMAIN', dns_suffix)
+                        else:
+                            logger.error("Terminating.")
+                            exit(1)
+                    else:
+                        logger.info("DOMAIN value is correct. Continuing...")
+                return update_config_field(config_field_name, common_name.split('.')[0])
             else:
                 logger.error("No changes made to the corresponding field.")
                 return False
@@ -326,11 +342,13 @@ if __name__ == '__main__':
         logger.info("Root CA certificate common name verification successful.")
     else:
         logger.error("Root CA certificate common name verification failed.")
+        exit(1)
 
     if verify_certificate_common_name(server_pem_file, "SERVER_NAME"):
         logger.info("Server certificate common name verification successful.")
     else:
         logger.error("Server certificate common name verification failed.")
+        exit(1)
 
     logger.info("Converting files to .crt/.key...")
 

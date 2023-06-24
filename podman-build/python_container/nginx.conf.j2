@@ -33,28 +33,54 @@ http {
 
         access_log /var/log/nginx/access.log custom;
 
+        # Client-facing certificate and key
         ssl_certificate {{ server_cert }};
         ssl_certificate_key {{ server_key }};
-
+        
         # Request client certificates
         ssl_client_certificate {{ root_cert_path }};
         ssl_verify_client on;
+
+        {% if internal_cert and internal_key %}
+        # The below code blocks define the behavior for when we hit /api or
+        # /. Notice that if internal_cert and internal_key are defined we add
+        # the proxy_ssl_certificate directives. This is to account for users
+        # being able to provide their own certificates. If the user provides
+        # a certificate then that must be presented forward facing but we don't
+        # want them to have to provide a certificate for each component of patches.
+        # The way we handle this is to use their certificate forward facing and
+        # then use our own certificates internally.
+        {% endif %}
 
         location /api {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header Host $http_host;
 
-            # See https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_cert
+            {% if internal_cert and internal_key %}
+            proxy_ssl_certificate {{ internal_cert }};
+            proxy_ssl_certificate_key {{ internal_key }};
+            proxy_ssl_verify on;
+            {% endif %}
+
+            # Set X-SSL-CERT header with client certificate
             proxy_set_header X-SSL-CERT $ssl_client_escaped_cert;
+
             proxy_pass https://patches-backend:{{ backend_port }};
         }
 
         location / {
             proxy_set_header Host $http_host;
-            proxy_pass http://patches-frontend:{{ frontend_port }};
 
-            # See https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_cert
+            {% if internal_cert and internal_key %}
+            proxy_ssl_certificate {{ internal_cert }};
+            proxy_ssl_certificate_key {{ internal_key }};
+            proxy_ssl_verify on;
+            {% endif %}
+
+            # Set X-SSL-CERT header with client certificate
             proxy_set_header X-SSL-CERT $ssl_client_escaped_cert;
+
+            proxy_pass http://patches-frontend:{{ frontend_port }};
         }
     }
 }

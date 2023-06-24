@@ -19,6 +19,7 @@ from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_
 # Get the logger instance
 logger = PatchesLogger.get_logger()
 
+
 def create_root_ca(country, state, locality, organization_name, root_ca_name, root_cert_directory):
     """Creates a new root Certificate Authority (CA) and private key.
 
@@ -330,7 +331,7 @@ else:
 root_key, root_crt = create_root_ca(country=yaml_data['country'],
                                     state=yaml_data['state'],
                                     locality=yaml_data['locality'],
-                                    root_ca_name=yaml_data['ROOT_CA_NAME'],
+                                    root_ca_name=f"{yaml_data['ROOT_CA_NAME']}.{yaml_data['DOMAIN']}",
                                     organization_name=yaml_data['organization_name'],
                                     root_cert_directory=os.path.join(certs_directory, root_certs_directory))
 
@@ -351,6 +352,8 @@ create_ssl_cert(
     ip_1=ipv4_address,
     ip_2=None,
     days=yaml_data['days'])
+
+logger.info("Updating config.yml with the new SERVER_NAME values...")
 
 update_config_file('SERVER_PEM', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.pem")
 update_config_file('PKCS_FILE', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.p12")
@@ -436,3 +439,5 @@ for client in yaml_data['clients']:
         ip_2=ip_address_2,
         days=yaml_data['clients'][client]['days'],
         password=pkcs_password)
+
+logger.info("Finished generating certificates...")

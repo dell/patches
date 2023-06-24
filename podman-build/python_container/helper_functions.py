@@ -4,13 +4,14 @@ import textwrap
 import time
 from typing import Optional
 
+import yaml
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509 import Certificate
 from cryptography.x509 import load_pem_x509_certificate
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 
 class PatchesLogHandler(logging.Handler):
@@ -286,18 +287,22 @@ def update_config_file(field_name, file_name):
         None
     """
     config_file_path = 'config.yml'
+    logger = PatchesLogger.get_logger()
 
     with open(config_file_path, 'r') as config_file:
         lines = config_file.readlines()
 
-    # Find and update the fields
+    # Find and update the fields. We are using this instead of the YAML library to avoid deleting all the comments
     for i, line in enumerate(lines):
         if field_name == 'ROOT_CA_PEM' and line.startswith('ROOT_CA_PEM:'):
             lines[i] = f"ROOT_CA_PEM: {file_name}\n"
+            logger.info(f"Replaced ROOT_CA_PEM with {file_name}")
         elif field_name == 'SERVER_PEM' and line.startswith('SERVER_PEM:'):
             lines[i] = f"SERVER_PEM: {file_name}\n"
+            logger.info(f"Replaced SERVER_PEM with {file_name}")
         elif field_name == 'PKCS_FILE' and line.startswith('PKCS_FILE:'):
             lines[i] = f"PKCS_FILE: {file_name}\n"
+            logger.info(f"Replaced PKCS_FILE with {file_name}")
 
     # Write back modified data to config.yml
     with open(config_file_path, 'w') as config_file:

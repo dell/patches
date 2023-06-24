@@ -124,6 +124,8 @@ if (!opts.ca) {
 // See https://stackoverflow.com/a/39872729/4427375
 app.use(bodyParser.json());
 
+// TODO - See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
+
 /**
  * clientAuthMiddleware checks inbound requests and validates that the client
  * request is using a certificate signed by the CA Patches is using
