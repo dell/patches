@@ -6,6 +6,7 @@
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
     - [STIGs](#stigs)
+  - [Our Stance on Security](#our-stance-on-security)
   - [System Requirements](#system-requirements)
   - [Patches Architecture Overview](#patches-architecture-overview)
   - [Installation](#installation)
@@ -64,6 +65,10 @@ We recommend you use the Minimal distribution.
 If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organization Rocky Linux comes with an option in the installer to automatically STIG the operating system. See [this official Rocky Linux guide](https://docs.rockylinux.org/books/disa_stig/disa_stig_part1/) for how to create a STIG-hardened Rocky instance automatically.
 
 **Note** At the time of writing the docs only mention Rocky Linux 8 but it is available for Rocky Linux 9 as well.
+
+## Our Stance on Security
+
+After initial setup nothing in Patches runs as sudo. Everything runs as user and in fact, if desired, you can run the entire installation as user without ever elevating to sudo. This includes the podman instance that powers Patches.
 
 ## System Requirements
 
@@ -132,13 +137,11 @@ To import keys, change to the `patches/podman-build` directory and run `bash pat
 
 #### Manually Importing Certificates
 
-**This is not recommended. Unless you have a specific reason, you should use the import-keys function described above.**
+**This will only work for new root CA certs. If you want to change the PKI infrastructure you must run `bash podman-build/patches generate-certificates` or `bash podman-build/patches import-keys <args>`**
 
-1. Make sure your certificates are in PEM format.
-2. Make sure the name of the root CA pem file is the same as what is listed in [config.yml](./podman-build/config.yml). The common name in the certificate itself must also match what is in config.yml. For example, if ROOT_CA_NAME is rootCA than your pem file should be rootCA.pem and the common name should be rootCA.
-3. Make sure the name of the patches server pem file is the same as what is listed in [config.yml](./podman-build/config.yml). For the patches server, the common name in the cert **must** include the domain. For example, if SERVER_NAME in config.yml is patches and DOMAIN is set to lan then the common name should be patches.lan.
-4. Copy your root CA cert to `./server_certs/root_certs`
-5. Copy your server cert to `./server_certs`
+1. Make sure your certificates are in PEM format and at least have the root CA public key. You can optionally add the private key.
+2. Copy your root CA cert to `./server_certs/root_certs`
+3. Run `bash podman-build/patches stop && bash podman-build/patches start` to restart the service
 
 ### Customizing Setup
 
