@@ -1663,21 +1663,30 @@ case $1 in
     fi
     ;;
 
-  logs)
+logs)
     logs_folder="logs"
-    zip_file="logs.zip"
+    timestamp=$(date +"%Y%m%d%H%M%S")
+    logs_folder_timestamped="${logs_folder}/${timestamp}-logs"
+    tar_file="logs.tar.gz"
 
-    mkdir -p "$logs_folder"
+    mkdir -p "$logs_folder_timestamped"
+
+    patches_echo "Getting the logs now. Sometimes it takes a few moments for the large logs..."
 
     for container in "${containers[@]}"; do
+        error_log_file="${container}_error.log"
+        standard_log_file="${container}_standard.log"
+
         patches_echo "Getting logs for container: $container"
-        podman logs "$container" > "$logs_folder/$container.log"
+
+        podman logs "$container" > "$logs_folder_timestamped/$standard_log_file" 2>> "$logs_folder_timestamped/$error_log_file"
     done
 
-    zip -r "$zip_file" "$logs_folder"
+    tar -czvf "$tar_file" "$logs_folder_timestamped"
 
-    patches_echo "Logs have been saved to ${TOP_DIR}/$zip_file and the folder ${TOP_DIR}/logs"
+    patches_echo "Logs have been saved to ${TOP_DIR}/$tar_file and the folder ${TOP_DIR}/${logs_folder_timestamped}"
     ;;
+
 
   add-admin)
 
