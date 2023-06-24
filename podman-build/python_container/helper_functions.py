@@ -277,8 +277,8 @@ def update_config_file(field_name, file_name):
     Updates the specified field in the config.yml file with the given absolute file path.
 
     Args:
-        field_name (str): Name of the field to update. Must be one of "ROOT_CA_PEM", "SERVER_PEM", or "PKCS_FILE".
-        file_name (str): The name of the certificate
+        field_name (str): Name of the field to update.
+        file_name (str): The name of the certificate.
 
     Raises:
         ValueError: If an invalid field name is provided.
@@ -293,17 +293,18 @@ def update_config_file(field_name, file_name):
         lines = config_file.readlines()
 
     # Find and update the fields. We are using this instead of the YAML library to avoid deleting all the comments
+    field_found = False
     for i, line in enumerate(lines):
-        if field_name == 'ROOT_CA_PEM' and line.startswith('ROOT_CA_PEM:'):
-            lines[i] = f"ROOT_CA_PEM: {file_name}\n"
-            logger.info(f"Replaced ROOT_CA_PEM with {file_name}")
-        elif field_name == 'SERVER_PEM' and line.startswith('SERVER_PEM:'):
-            lines[i] = f"SERVER_PEM: {file_name}\n"
-            logger.info(f"Replaced SERVER_PEM with {file_name}")
-        elif field_name == 'PKCS_FILE' and line.startswith('PKCS_FILE:'):
-            lines[i] = f"PKCS_FILE: {file_name}\n"
-            logger.info(f"Replaced PKCS_FILE with {file_name}")
+        if line.startswith(f"{field_name}:"):
+            lines[i] = f"{field_name}: {file_name}\n"
+            logger.info(f"Replaced {field_name} with {file_name}")
+            field_found = True
+
+    if not field_found:
+        logger.error(f"Field name '{field_name}' not found in config.yml")
+        exit(1)
 
     # Write back modified data to config.yml
     with open(config_file_path, 'w') as config_file:
         config_file.writelines(lines)
+

@@ -335,7 +335,8 @@ root_key, root_crt = create_root_ca(country=yaml_data['country'],
                                     organization_name=yaml_data['organization_name'],
                                     root_cert_directory=os.path.join(certs_directory, root_certs_directory))
 
-logger.info("Creating the patches server certificate. This will be assigned to the nginx proxy...")
+logger.info(f"Creating the patches server certificate {yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}. This will be "
+            f"assigned to the nginx proxy...")
 
 create_ssl_cert(
     root_private_key=root_key,

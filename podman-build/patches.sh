@@ -1468,6 +1468,30 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# Make sure there is no overlap in any of the certificate names as this will cause failures.
+# This lesson was learned over the course of an hour on a Saturday and I am sad.
+if [[ "$ROOT_CA_NAME" == "$SERVER_NAME" || "$ROOT_CA_NAME" == "$BACKEND_CERT_NAME" || "$ROOT_CA_NAME" == "$FRONTEND_CERT_NAME" || "$SERVER_NAME" == "$BACKEND_CERT_NAME" || "$SERVER_NAME" == "$FRONTEND_CERT_NAME" || "$BACKEND_CERT_NAME" == "$FRONTEND_CERT_NAME" ]]; then
+    patches_echo "Error: The following variable(s) have the same value and must be changed:" --error
+    if [[ "$ROOT_CA_NAME" == "$SERVER_NAME" ]]; then
+        patches_echo "- ROOT_CA_NAME and SERVER_NAME" --error
+    fi
+    if [[ "$ROOT_CA_NAME" == "$BACKEND_CERT_NAME" ]]; then
+        patches_echo "- ROOT_CA_NAME and BACKEND_CERT_NAME" --error
+    fi
+    if [[ "$ROOT_CA_NAME" == "$FRONTEND_CERT_NAME" ]]; then
+        patches_echo "- ROOT_CA_NAME and FRONTEND_CERT_NAME" --error
+    fi
+    if [[ "$SERVER_NAME" == "$BACKEND_CERT_NAME" ]]; then
+        patches_echo "- SERVER_NAME and BACKEND_CERT_NAME" --error
+    fi
+    if [[ "$SERVER_NAME" == "$FRONTEND_CERT_NAME" ]]; then
+        patches_echo "- SERVER_NAME and FRONTEND_CERT_NAME" --error
+    fi
+    if [[ "$BACKEND_CERT_NAME" == "$FRONTEND_CERT_NAME" ]]; then
+        patches_echo "- BACKEND_CERT_NAME and FRONTEND_CERT_NAME" --error
+    fi
+    exit 1
+fi
 
 # Create the bridge network if it doesn't exist
 if podman network inspect host-bridge-net &>/dev/null; then
