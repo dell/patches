@@ -1,6 +1,7 @@
 # Patches
 
 - [Patches](#patches)
+  - [Beta](#beta)
   - [What Is Patches?](#what-is-patches)
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
@@ -29,6 +30,10 @@
     - [Minor Version](#minor-version)
     - [Patch Version](#patch-version)
   - [Debugging](#debugging)
+
+## Beta
+
+Patches is currently in beta. The main branch will have the latest build but you may encounter bugs or problems. Please report them in the issue tracker.
 
 ## What Is Patches?
 
