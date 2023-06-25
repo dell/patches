@@ -11,7 +11,6 @@
   - [Patches Architecture Overview](#patches-architecture-overview)
   - [Installation](#installation)
     - [Download Patches](#download-patches)
-      - [Using Command Line](#using-command-line)
       - [Using Browser](#using-browser)
     - [Install Podman](#install-podman)
     - [Open Ports](#open-ports)
@@ -88,20 +87,13 @@ It is not important that you understand this to use Patches, but it is provided 
 
 ### Download Patches
 
-#### Using Command Line
-
-Not available during the beta because the repos are currently private.
-
 #### Using Browser
 
-1. Go to [Dell's GitHub Page](https://github.com/dell/patches)
-2. Click the green *Code* button and then click *Download Zip*
-
-![](images/2023-06-08-10-51-06.png)
-
-1. Extract the zip in a location of your choosing. Patches will install to this location so make sure it is in the desired install location.
-2. If your Linux instance does not have a web UI you can use [WinSCP](https://winscp.net/eng/index.php) to upload the files from your desktop to the Linux server. Linux desktops also have a [built in SCP client](https://www.geeksforgeeks.org/scp-command-in-linux-with-examples/)
-3. After you place the files on your Linux server make sure they are owned by you with `sudo chown -R $(whoami) /path/to/patches`
+1. Go to [the Patches releases](https://github.com/dell/patches/releases)
+2. Download the source code under Assets at the bottom of the page.
+3. Extract the zip/tar to a location of your choosing. Patches will install to this location so make sure it is in the desired install location.
+4. If your Linux instance does not have a web UI you can use [WinSCP](https://winscp.net/eng/index.php) to upload the files from your desktop to the Linux server. Linux desktops also have a [built in SCP client](https://www.geeksforgeeks.org/scp-command-in-linux-with-examples/)
+5. After you place the files on your Linux server make sure they are owned by you with `sudo chown -R $(whoami) /path/to/patches`
 
 ### Install Podman
 
