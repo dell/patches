@@ -64,6 +64,7 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
                     with open(key_file, 'rb') as f:
                         root_private_key = serialization.load_pem_private_key(f.read(), password=None,
                                                                               backend=default_backend())
+                    update_config_file('ROOT_CA_PEM', f"{root_ca_name}.pem")
                     logger.info('CA cert and key loaded successfully.')
                     return root_private_key, root_cert
                 except Exception as e:

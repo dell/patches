@@ -67,6 +67,12 @@ function patches_read() {
   local prompt="$@"
   local wrapped_prompt=""
   local line_length=0
+  local password=false
+  
+  if [[ "$prompt" == *"--password"* ]]; then
+    # --password is present in the prompt
+    password=true
+  fi
 
   # Print first line of 80 #
   printf '%.0s#' {1..80}
@@ -74,16 +80,18 @@ function patches_read() {
 
   # Wrap the prompt at 80 characters
   for word in $prompt; do
-    if (( line_length + ${#word} > 80 )); then
-      wrapped_prompt+="\n${word}"
-      line_length=${#word}
-    else
-      if (( line_length > 0 )); then
-        wrapped_prompt+=" ${word}"
-        line_length=$(( line_length + ${#word} + 1 ))
-      else
-        wrapped_prompt+="${word}"
+    if [[ "$word" != "--password" ]]; then  # Skip "--password" from the wrapped prompt
+      if (( line_length + ${#word} > 80 )); then
+        wrapped_prompt+="\n${word}"
         line_length=${#word}
+      else
+        if (( line_length > 0 )); then
+          wrapped_prompt+=" ${word}"
+          line_length=$(( line_length + ${#word} + 1 ))
+        else
+          wrapped_prompt+="${word}"
+          line_length=${#word}
+        fi
       fi
     fi
   done
@@ -97,7 +105,7 @@ function patches_read() {
   echo
 
   # Read user input
-  if [[ "$1" == "--password" ]]; then
+  if [ "${password}" = true ]; then
     # Read password securely (hidden input)
     read -s input
   else
@@ -580,7 +588,7 @@ function run_nginx() {
       patches_echo "Setting unprivileged ports to start at port 80..."
       sudo sysctl net.ipv4.ip_unprivileged_port_start=80
       sudo touch /etc/sysctl.d/local.conf
-      patches_echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee -a /etc/sysctl.d/local.conf
+      echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee -a /etc/sysctl.d/local.conf
 
       patches_echo "Starting nginx. nginx will listen on ports 80 and 443. Port 80 will redirect to 443..."
 
@@ -879,6 +887,12 @@ function run_patches_services() {
 # Returns:
 #   None
 function enable_systemd_service() {
+  # Check if Patches service is already installed and running
+  if systemctl --user is-enabled patches.service >/dev/null 2>&1; then
+    patches_echo "Patches systemd service is already installed and running. Skipping service creation."
+    return
+  fi
+
   # Prompt the user if they want to create a systemd service
   if ask_yes_no "Do you want to create a systemd service to run Patches on startup? This will require sudo privileges."; then
 
@@ -920,6 +934,7 @@ EOF
     patches_echo "Skipping systemd service creation."
   fi
 }
+
 
 # patches_build builds the necessary Docker images for the Patches application
 #
@@ -1060,7 +1075,18 @@ function patches_setup() {
       patches_echo "PATCHES_ADMINISTRATOR is already set to: $PATCHES_ADMINISTRATOR"
   fi
 
-  
+  # Check if PSQL_PASSWORD is empty
+  if [ -z "$PSQL_PASSWORD" ]; then
+      patches_read "Please enter the password you would like to use for the postgresql database" --password
+      PSQL_PASSWORD=${RETURN_VALUE}
+
+      # Update the PATCHES_ADMINISTRATOR line in the config file
+      sed -i "s/^PSQL_PASSWORD:.*/PSQL_PASSWORD: $PSQL_PASSWORD/" "${SCRIPT_DIR}/config.yml"
+
+      patches_echo "psql password updated"
+  else
+      patches_echo "PSQL_PASSWORD  is already set..."
+  fi
 
   # Delete any old containers still running on the server
   cleanup_containers
@@ -1519,7 +1545,9 @@ function patches_start() {
         all_containers_running=false
 
         patches_echo "Starting container: $container"
-        podman start "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
+        if ! podman start "$container" >/dev/null 2>&1; then
+          patches_echo "Container $container failed to start" --error
+        fi
 
         if [[ $container == "patches-nginx" ]]; then
           check_nginx_status
@@ -1762,7 +1790,7 @@ case $1 in
           patches_echo "Container $container is up and running."
         else
           all_running=false
-          patches_echo "Container $container is not running."
+          patches_echo "Container $container is not running." --error
         fi
       else
         all_running=false

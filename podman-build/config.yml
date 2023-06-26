@@ -1,15 +1,4 @@
 ################################################################################
-# PostgreSQL Settings                                                          #
-################################################################################
-
-# These are the username and password for the backend PSQL database used to store Patches metadata
-PSQL_USERNAME: "patches"
-PSQL_PASSWORD: "password"
-
-# The name of the Patches administrator. This *MUST* match the common name on the certificate of the administrator.
-PATCHES_ADMINISTRATOR: 
-
-################################################################################
 # Existing RootCA and Patches Server Certificate Configuration                 #
 ################################################################################
 # If you already have a CA key and crt you want to provide you can provide     #
@@ -126,6 +115,21 @@ clients:
 
     # How many days the certs should be valid. Default is three years.
     days: 1095
+
+################################################################################
+# PostgreSQL Settings                                                          #
+################################################################################
+
+# These are the username and password for the backend PSQL database used to store Patches metadata
+# Note the PSQL password is currently stored insecurely in an environment file. The Patches database
+# itself only has publicly available Dell metadata, a list of users who can see download statistics
+# and the download statistics themselves.
+# This is a known problem with the PSQL container. See https://github.com/docker-library/postgres/issues/111
+PSQL_USERNAME: "patches"
+PSQL_PASSWORD:
+
+# The name of the Patches administrator. This *MUST* match the common name on the certificate of the administrator.
+PATCHES_ADMINISTRATOR: 
 
 ################################################################################
 # Developer Options                                                            #
