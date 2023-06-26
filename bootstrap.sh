@@ -1,13 +1,13 @@
 #!/bin/bash
 
+# Set the version to be downloaded
+VERSION="v1.0.0-beta"
+
 # Check if the script is being run as root
 if [[ $EUID -ne 0 ]]; then
   echo "Error: This script must be run as root."
   exit 1
 fi
-
-# Set the version to be downloaded
-VERSION="v1.0.0-beta"
 
 # Function: patches_echo
 #
@@ -211,67 +211,146 @@ check_user_namespace() {
   fi
 
   # Check if setuid is configured
-  if ! grep -qE '^setuid[[:space:]]+([0-9-]+)$' /etc/subuid; then
-    if ask_yes_no "Error: Setuid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Do you want to remediate automatically?"; then
-      echo "Configuring setuid..."
-      sudo usermod --add-subuids 200000-201000 --add-subgids 200000-201000 "$USER"
-    else
-      patches_echo "Terminating Patches bootstrap. Installation cannot continue." --error
-      exit 1
-    fi
+  patches_echo "Contents of /etc/subuid:"
+  cat /etc/subuid
+  if ! grep -E "^${SUDO_USER}:[[:digit:]]+:[[:digit:]]+" /etc/subuid; then
+    patches_echo "Error: Setuid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Please manually check the /etc/subuid file." --error
+    exit 1
   fi
 
   # Check if setgid is configured
-  if ! grep -qE '^setgid[[:space:]]+([0-9-]+)$' /etc/subgid; then
-    if ask_yes_no "Error: Setgid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Do you want to remediate automatically?"; then
-      echo "Configuring setgid..."
-      sudo usermod --add-subuids 200000-201000 --add-subgids 200000-201000 "$USER"
-    else
-      patches_echo "Terminating Patches bootstrap. Installation cannot continue." --error
-      exit 1
-    fi
+  patches_echo "Contents of /etc/subgid:"
+  cat /etc/subgid
+  if ! grep -E "^${SUDO_USER}:[[:digit:]]+:[[:digit:]]+" /etc/subgid; then
+    patches_echo "Error: Setgid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Please manually check the /etc/subgid file." --error
+    exit 1
   fi
 }
 
 
-# Check if the user owns the current directory
-[[ $(stat -c '%U' .) != $SUDO_USER ]] && { patches_echo "Error: You do not own the current directory. Please make sure you have the necessary permissions." --error; exit 1; }
+# Function: validate_directory
+#
+# Description: Checks if the specified directory exists and is valid.
+#
+# Parameters:
+#   - directory: The directory to validate.
+#
+# Returns:
+#   - 0 if the directory exists and is valid.
+#   - 1 if the directory does not exist or is invalid.
+#
+function validate_directory() {
+  local directory=$1
 
-# Step 1: Install wget
+  if [ ! -d "$directory" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Function: ask_installation_location
+#
+# Description: Asks the user for the installation location and validates it.
+#
+# Returns:
+#   - The validated installation location.
+#
+function ask_installation_location() {
+  local location
+
+  while true; do
+    patches_read "Where do you want to install Patches? "
+
+    # Remove trailing slash unless the input is just "/"
+    if [[ "$RETURN_VALUE" != "/" ]]; then
+      RETURN_VALUE=${RETURN_VALUE%/}
+    fi
+
+    if validate_directory "$RETURN_VALUE"; then
+      break
+    else
+      patches_echo "The specified location is not valid. Please try again." --error
+    fi
+  done
+
+  # Prompt the user to confirm the installation location
+  local install_location="$RETURN_VALUE"
+  if [[ "$install_location" != "/" ]]; then
+    install_location="$install_location/patches"
+  else
+    install_location="/patches"
+  fi
+
+  while true; do
+    if ask_yes_no "Patches will install to $install_location. Would you like to continue?"; then
+      break
+    else
+      while true; do
+        patches_read "Please enter a new installation location: "
+        # Remove trailing slash unless the input is just "/"
+        if [[ "$RETURN_VALUE" != "/" ]]; then
+          RETURN_VALUE=${RETURN_VALUE%/}
+          install_location="${RETURN_VALUE}/patches"
+        else
+          install_location="/patches"
+        fi
+        if validate_directory "$RETURN_VALUE"; then
+          break
+        else
+          patches_echo "The specified location is not valid. Please try again." --error
+        fi
+      done
+    fi
+  done
+
+  RETURN_VALUE=${install_location}
+
+}
+
+# Install wget
 dnf install -y wget || { patches_echo "Error: Failed to install wget." --error; exit 1; }
 
-rm -rf "patches"
+rm -f ${VERSION}.tar.gz
 
-# Step 2: Download the source code
+# Download the source code
+patches_echo "Running wget to grab Patches version ${VERSION}..."
 wget "https://github.com/dell/patches/archive/refs/tags/${VERSION}.tar.gz" || { patches_echo "Error: Failed to download the source code." --error; exit 1; }
 
-# Step 3: Create the 'patches' directory
-mkdir patches || { patches_echo "Error: Failed to create the 'patches' directory." --error; exit 1; }
-
-# Step 4: Extract the source code
-tar -xf "${VERSION}.tar.gz" -C patches --strip-components=1 || { patches_echo "Error: Failed to extract the source code." --error; exit 1; }
+# Extract the source code to a temporary directory
+tmp_dir=$(mktemp -d)
+patches_echo "Untarring archive..."
+tar -xf "${VERSION}.tar.gz" -C "$tmp_dir" --strip-components=1 || { patches_echo "Error: Failed to extract the source code." --error; exit 1; }
+patches_echo "Removing tar file..."
 rm -f "${VERSION}.tar.gz" || { patches_echo "Error: Failed to remove the unnecessary tar file." --error; exit 1; }
 
-# Step 5: Set the install location
-INSTALL_DIR=$(pwd)/patches
+# Set the install location
+ask_installation_location
+INSTALL_DIR=${RETURN_VALUE}
 
-# Step 6: Change ownership of the files
-chown -R $SUDO_USER $INSTALL_DIR || { patches_echo "Error: Failed to change ownership of the files." --error; exit 1; }
+# Remove existing 'patches' directory
+if ! rm -rf "${INSTALL_DIR}"; then
+  patches_echo "Error: Failed to remove existing 'patches' directory." --error
+  exit 1
+fi
 
-# Step 7: Install Podman
+# Move the extracted content to the installation location
+mv "$tmp_dir" "$INSTALL_DIR" || { patches_echo "Error: Failed to move extracted content to the installation location." --error; exit 1; }
+
+# Change ownership of the files
+chown -R $SUDO_USER: ${INSTALL_DIR} || { patches_echo "Error: Failed to change ownership of the files." --error; exit 1; }
+
+# Install Podman
 dnf install -y podman || { patches_echo "Error: Failed to install Podman." --error; exit 1; }
 
 check_user_namespace
 
-# Step 8: Test Podman privileges
+# Test Podman privileges
 su -c 'podman run hello-world' $SUDO_USER || { patches_echo "Error: Podman privileges test failed. Make sure Podman is properly installed and your user has the necessary permissions." --error; exit 1; }
 
-# Step 9: Open necessary ports
+# Open necessary ports
 firewall-cmd --zone=public --add-port=80/tcp --add-port=443/tcp --add-port=8080/tcp --permanent || { patches_echo "Error: Failed to open necessary ports." --error; exit 1; }
 firewall-cmd --reload || { patches_echo "Error: Failed to reload the firewall configuration." --error; exit 1; }
-
-# Step 10: Change ownership of the files to the current user
-chown -R $SUDO_USER $INSTALL_DIR || { patches_echo "Error: Failed to change ownership of the files." --error; exit 1; }
 
 # Completion message
 patches_echo -e "\n\033[1;33mPatches installation completed successfully. All files are owned by the current user.\033[0m"
