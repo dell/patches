@@ -15,7 +15,7 @@ COPY podman-build/drm_run.sh /patches/drm_run.sh
 COPY podman-build/drm_install.exp /tmp/drm_install.exp
 
 # Clone the repository with the beta branch
-RUN git clone --branch beta --single-branch https://github.com/dell/patches.git /tmp/patches
+RUN git clone --branch main --single-branch https://github.com/dell/patches.git /tmp/patches
 
 # Install Git LFS
 RUN dnf install -y git-lfs

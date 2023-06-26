@@ -133,6 +133,49 @@ fi
 # Function definitions                                                         #
 ################################################################################
 
+# Function: get_ip_address
+#
+# Description: Prompts the user to select an interface with an assigned IPv4 address and UP/UP state.
+#
+# Environment Variables:
+#   - interface: A global variable that stores the selected interface.
+#   - ipv4_address: A global variable that stores the IPv4 address of the selected interface.
+#
+# Returns: None
+
+function get_ip_address() {
+
+  patches_echo "Checking interfaces..."
+  # Check for invalid interfaces and inform the user that they are ignored
+  for iface in $(ip addr | awk '/state/ {print $2}' | sed 's/://; /^lo/d' | grep -v "${interfaces}")
+  do
+    patches_echo "Ignored $iface because it is not in an UP/UP state with an assigned IPv4 address."
+  done
+
+  # Get a list of physical interfaces in an UP/UP state with an assigned IPv4 address
+  interfaces=$(ip addr | awk '/state UP/ {print $2}' | sed 's/://; /^lo/d' | xargs -I {} sh -c 'if ip addr show {} | grep -q "inet "; then echo {}; fi')
+
+  if [ -z "${interfaces}" ]; then
+    patches_echo "No interfaces found with an assigned IPv4 address and UP/UP state."
+    exit 1
+  fi
+
+  # Prompt the user to enter an interface
+  patches_echo "List of available interfaces:"
+  PS3=$(echo -e "\033[1;34mEnter the number of the interface you want to use: \033[0m")
+  select interface in "${interfaces[@]}"
+  do
+    if [ -z "$interface" ]; then
+      patches_echo "Invalid input. Please enter a number from 1 to $(echo "${#interfaces[@]}" | wc -w)."
+    else
+      ipv4_address=$(ip addr show "$interface" | awk '$1 == "inet" {gsub(/\/.*$/, "", $2); print $2}')
+      patches_echo "Using interface $interface with IPv4 address $ipv4_address."
+      break
+    fi
+  done
+}
+
+
 # Function to generate a random color code
 get_random_color() {
     local colors=("31" "32" "33" "34" "35" "36")
@@ -606,6 +649,24 @@ function run_nginx() {
 #   None
 function generate_certificates() {
 
+  # Check if variables interfaces or ipv4_address are not defined
+  if [[ -z ${interfaces+x} || -z ${ipv4_address+x} ]]; then
+    get_ip_address
+  fi
+
+  # Setup environment variables for the certificate generator
+  echo "IPV4_ADDRESS=${ipv4_address}" > ${TOP_DIR}/.patches-certificate-generator
+  echo "ROOT_CERT_DIRECTORY=${ROOT_CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
+  echo "CERT_DIRECTORY=${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
+
+  # Check to see if the generic client names are still present
+  if [[ -n ${clients_grant+x} ]] && [[ -n ${clients_grace+x} ]]; then
+    if ask_yes_no "The default client names grant and grace are still present in ${SCRIPT_DIR}/config.yml. This means when you generate keys the only clients that will be available will be named grant and grace. You will likely want to change this to your own client information by modifying ${SCRIPT_DIR}/config.yml. See https://github.com/dell/patches#customizing-setup for details. Would you like to stop the setup?"; then
+      patches_echo "Terminating." --error
+      exit 1
+    fi
+  fi
+
   # Make sure any old containers are cleaned up
   podman rm -f patches-certificate-generator || true
 
@@ -623,6 +684,10 @@ function generate_certificates() {
 
   # Reparse the YAML file because it has been updated
   eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
+
+  printf $'\033[1;35mYour user certificates have been generated. They are available in\n %s/server_certs. Press any key to continue.\033[0m\n' "${TOP_DIR}"
+  read -n 1 -s -r -p ""
+
 }
 
 # wait_for_postgresql - waits for PostgreSQL to start within a timeout duration
@@ -849,7 +914,7 @@ EOF
       patches_echo "Systemd service created and enabled successfully."
 
     else
-      patches_echo "We were unable to enable linger for your user. We cannot install the systemd service. The setup has not failed but we are skipping the installation of the systemd service. You can still start patches manually as your user with \`patches.sh start\`. You can also re-attempt the service setup with \`patches.sh install-service\`." --error    
+      patches_echo "We were unable to enable linger for your user. We cannot install the systemd service. The setup has not failed but we are skipping the installation of the systemd service. You can still start patches manually as your user with \`bash ${SCRIPT_DIR}/patches.sh start\`. You can also re-attempt the service setup with \`bash ${SCRIPT_DIR}/patches.sh install-service\`." --error    
     fi
   else
     patches_echo "Skipping systemd service creation."
@@ -980,6 +1045,8 @@ function patches_setup() {
       patches_echo "Warning: Unable to determine the operating system." --error
   fi
 
+
+
   # Check if PATCHES_ADMINISTRATOR is empty
   if [ -z "$PATCHES_ADMINISTRATOR" ]; then
       patches_read "Please enter the name of the administrator for patches. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel."
@@ -1036,7 +1103,7 @@ function patches_setup() {
   if [ ${#xml_files[@]} -gt 0 ]; then 
       echo true 
   else
-      patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case."
+      patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case. If you already have the repository, move it to your Patches server and then run \`bash ${SCRIPT_DIR}/patches.sh import-repository\` to import it."
 
       if ask_yes_no "Do you want to use Dell Repository Manager to pull the Enterprise Catalog automatically?"; then
         # Check if the DRM container image already exists
@@ -1047,36 +1114,10 @@ function patches_setup() {
       fi
   fi
 
-  # Configure Patches interfaces
-
-  patches_echo "Checking interfaces..."
-  # Check for invalid interfaces and tell the user we ignored them and why we ignored them
-  for iface in $(ip addr | awk '/state/ {print $2}' | sed 's/://; /^lo/d' | grep -v "${interfaces}")
-  do
-    patches_echo "Ignored $iface because it is not in an UP/UP state with an assigned IPv4 address."
-  done
-
-  # get list of physical interfaces in an UP/UP state with an assigned IPv4 address
-  interfaces=$(ip addr | awk '/state UP/ {print $2}' | sed 's/://; /^lo/d' | xargs -I {} sh -c 'if ip addr show {} | grep -q "inet "; then echo {}; fi')
-
-  if [ -z "${interfaces}" ]; then
-    patches_echo "No interfaces found with an assigned IPv4 address and UP/UP state."
-    exit 1
+  # Check if variables interfaces or ipv4_address are not defined
+  if [[ -z ${interfaces+x} || -z ${ipv4_address+x} ]]; then
+    get_ip_address
   fi
-
-  # Prompt the user to enter an interface
-  patches_echo "List of available interfaces:"
-  PS3=$(echo -e "\033[1;34mEnter the number of the interface you want to use: \033[0m")
-  select interface in ${interfaces}
-  do
-    if [ -z "$interface" ]; then
-      patches_echo "Invalid input. Please enter a number from 1 to $(echo ${interfaces} | wc -w)."
-    else
-      ipv4_address=$(ip addr show $interface | awk '$1 == "inet" {gsub(/\/.*$/, "", $2); print $2}')
-      patches_echo "Using interface $interface with IPv4 address $ipv4_address."
-      break
-    fi
-  done
 
   # TODO - https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
 
@@ -1113,11 +1154,6 @@ function patches_setup() {
   # Remove the configuration container after it is finished
   podman rm -f -t 0 'patches-configure-nginx'
 
-  # Setup environment variables for the certificate generator
-  echo "IPV4_ADDRESS=${ipv4_address}" > ${TOP_DIR}/.patches-certificate-generator
-  echo "ROOT_CERT_DIRECTORY=${ROOT_CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
-  echo "CERT_DIRECTORY=${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
-
   # Check if keys already exist in the cert directory and if they do prompt the user whether they want to continue
   # with key generation.
 
@@ -1135,7 +1171,7 @@ function patches_setup() {
         missing_files+=("${SERVER_PEM}")
       fi
       missing_files_list=$(IFS=", "; echo "${missing_files[*]}")
-      if ! ask_yes_no "Error: The following PEM files specified in the variables ROOT_CA_PEM or SERVER_PEM do not exist: ${missing_files_list}. Do you want to generate new certificates instead? Type no to terminate patches. You can import existing certificates with \`bash patches.sh import-keys <args>\`" --error; then
+      if ! ask_yes_no "Error: The following PEM files specified in the variables ROOT_CA_PEM or SERVER_PEM do not exist: ${missing_files_list}. Do you want to generate new certificates instead? Type no to terminate patches. You can import existing certificates with \`bash ${SCRIPT_DIR}/patches.sh import-keys <args>\`" --error; then
         patches_echo "Terminating." --error
         exit 1
       else
@@ -1143,7 +1179,7 @@ function patches_setup() {
       fi
     fi
   else
-    if ! ask_yes_no "No existing certificates configured. Type yes to continue with automatic certificate generation. Type no to terminate patches. You can import existing certificates with \`bash patches.sh import-keys <args>\`"; then
+    if ! ask_yes_no "No existing certificates configured. Type yes to continue with automatic certificate generation. Type no to terminate patches. You can import existing certificates with \`bash ${SCRIPT_DIR}/patches.sh import-keys <args>\`"; then
       patches_echo "Terminating." --error
       exit 1
     else
@@ -1847,7 +1883,7 @@ logs)
     ;;
 
   *)
-    patches_echo "Specify 'start' or 'stop'"
+    patches_echo "Invalid command entered. Type -h for help."
     exit 1
     ;;
 esac
