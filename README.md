@@ -10,8 +10,8 @@
   - [System Requirements](#system-requirements)
   - [Patches Architecture Overview](#patches-architecture-overview)
   - [Installation](#installation)
+    - [The Easy Installation](#the-easy-installation)
     - [Download Patches](#download-patches)
-      - [Using Browser](#using-browser)
     - [Install Podman](#install-podman)
     - [Open Ports](#open-ports)
   - [Before You Run Setup](#before-you-run-setup)
@@ -85,9 +85,17 @@ It is not important that you understand this to use Patches, but it is provided 
 
 ## Installation
 
-### Download Patches
+### The Easy Installation
 
-#### Using Browser
+If you are on RHEL-family systems, including Rocky, you can copy and paste this code into your terminal to run the Patches and skip right to the section [Before You Run Setup](#before-you-run-setup):
+
+```
+wget https://github.com/dell/patches/blob/main/bootstrap.sh
+chmod +x ./bootstrap.sh
+./bootstrap.sh
+```
+
+### Download Patches
 
 1. Go to [the Patches releases](https://github.com/dell/patches/releases)
 2. Download the source code under Assets at the bottom of the page.

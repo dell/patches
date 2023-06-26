@@ -2,6 +2,10 @@
 
 Listed here are all things which will require routine maintenance and updates.
 
+## Before Each Release
+
+- The version in [bootstrap.sh](./bootstrap.sh) must be updated
+
 ## Required Version Updates
 
 - PSQL_VERSION in [config.yml](./podman-build/config.yml)
