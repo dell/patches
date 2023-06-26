@@ -190,7 +190,7 @@ It's that simple. After the setup completes patches will be up, running, and ava
 
 If you need to pull specific patches there are detailed instructions for manually pulling repositories located at [Download Repositories with Dell Repository Manager](./MANUALLY_PULL_REPOS.md)
 
-If you already have downloaded and exported the repository from DRM skip to [step #13 in Download Repositories with Dell Repository Manager](MANUALLY_PULL_REPOS.md).
+If you already have downloaded and exported the repository, run `bash <your_patches_directory>/podman-build/patches.sh import-repository` to import a new repo. Follow the prompts to import the repo.
 
 ### Setting Up Certs
 

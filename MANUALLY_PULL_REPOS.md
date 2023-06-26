@@ -46,17 +46,5 @@ You can run Dell Repository Manager on a server separate from Patches however, t
 
 12. Next, you will need to export the repository. Select your repository's checkbox and then click *Export*. Select the `<your_patches_directory>/drm_repos/drm_export` folder.
     1.  **NOTE**: You can monitor the progress of the export in the Jobs tab as you did with the download.
-13. Finally, you will need to move the exported repository into the patches repository directory. This move is necessary because the patches container will not have access to the folders owned by DRM user. 
-    1.  First make a folder for your new repository with `mkdir <your_patches_directory>/repos/xml/<FOLDER_NAME>`. **Make sure you do not run this `mkdir` command as root**. For example: `mkdir <your_patches_directory>/repos/xml/R7525` as in my case I only downloaded the files for the R7525.
-    2.  Next, move the files from the drm_export directory to your new directory with `sudo mv drm_repos/drm_export/* <your_patches_directory>/repos/xml/<FOLDER_NAME> && sudo chown <YOUR_USER>: -R repos`
-    3.  Confirm everything was done correctly by running `ls -al <your_patches_directory>/repos/xml` and verifying that your user and group are the owner of the folder you created (in my case grant:grant):
-
-            [grant@patches patches]$ ls -al repos/xml/
-            total 16
-            drwxrwxr-x.   4 grant grant    33 Feb  3 11:03 .
-            drwxrwxr-x.   3 grant grant    17 Feb  3 10:40 ..
-            drwxrwxr-x. 346 grant grant 12288 Feb  3 11:03 R7525
-            drwxrwxr-x.   2 grant grant    21 Feb  3 10:40 parsed
-
-14. **WARNING** You may noticed the parsed folder. This is required for Patches to operate.
-15. For any other repositories you want to create repeat the process of downloading the repository, exporting it, and then move it to a new folder **with the correct permissions** (this is key) in the `<your_patches_directory>/repos/xml` folder. For example, if I were going to add a new repo with all PowerEdge servers, I could create the repo in DRM, export it, and then move it to a new folder `<your_patches_directory>/repos/xml/PowerEdge`. 
+13. When you have finished downloading the repository, move it to a location of your choosing on your Patches server, and then run `bash <your_patches_directory>/podman-build/patches.sh import-repository` and follow the prompts
+14. For any other repositories you want to create repeat the process of downloading the repository, exporting it, and then move it to a new folder **with the correct permissions** (this is key) in the `<your_patches_directory>/repos/xml` folder. For example, if I were going to add a new repo with all PowerEdge servers, I could create the repo in DRM, export it, and then move it to a new folder `<your_patches_directory>/repos/xml/PowerEdge`. 

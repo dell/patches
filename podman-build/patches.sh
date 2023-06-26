@@ -993,6 +993,8 @@ function patches_setup() {
       patches_echo "PATCHES_ADMINISTRATOR is already set to: $PATCHES_ADMINISTRATOR"
   fi
 
+  
+
   # Delete any old containers still running on the server
   cleanup_containers
 
@@ -1413,6 +1415,95 @@ check_images() {
   fi
 }
 
+# Function: validate_directory
+#
+# Description: Checks if the specified directory exists and is valid.
+#
+# Parameters:
+#   - directory: The directory to validate.
+#
+# Returns:
+#   - 0 if the directory exists and is valid.
+#   - 1 if the directory does not exist or is invalid.
+#
+function validate_directory() {
+  local directory=$1
+
+  if [ ! -d "$directory" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Function: patches_stop
+#
+# Description: Stops the specified containers used by Patches.
+#
+# Parameters:
+#   - An array of container names to stop.
+#
+# Returns: None
+#
+function patches_stop() {
+  for container in "${containers[@]}"; do
+    patches_echo "Stopping container: $container"
+    podman stop "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
+  done
+}
+
+# Function: patches_start
+#
+# Description: Starts the required containers used by Patches and checks their status.
+#
+# Parameters: None
+#
+# Environment Variables:
+#   - SCRIPT_DIR: The directory where the Patches scripts are located.
+#   - CONTINUOUS: Used to have it continuously try to start Patches
+#
+# Returns: None
+#
+function patches_start() {
+  if [[ ! -s ${SCRIPT_DIR}/.container-info-patches.txt ]]; then
+    patches_echo "Patches must be set up before running. Please run 'patches setup' first."
+    exit 1
+  fi
+
+  all_containers_running=false
+
+  while true; do
+    all_containers_running=true
+
+    for container in "${containers[@]}"; do
+      patches_echo "Checking container status: $container"
+      status=$(podman container inspect -f '{{.State.Status}}' "$container" 2>/dev/null)
+
+      if [[ "$status" != "running" ]]; then
+        all_containers_running=false
+
+        patches_echo "Starting container: $container"
+        podman start "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
+
+        if [[ $container == "patches-nginx" ]]; then
+          check_nginx_status
+        elif [[ $container == "patches-psql" ]]; then
+          wait_for_postgresql
+        fi
+      fi
+    done
+
+    if [[ $all_containers_running == "true" ]]; then
+      break
+    fi
+
+    if [[ $CONTINUOUS != "TRUE" ]]; then
+      break
+    fi
+
+    sleep 1
+  done
+}
 
 ################################################################################
 # Main program                                                                 #
@@ -1459,6 +1550,7 @@ while [[ $# -gt 0 ]]; do
       echo -e "${COMMAND_COLOR}  reset-database${EXPLANATION_COLOR} Reset the Patches database and reinitialize it."
       echo -e "${COMMAND_COLOR}  generate-certificates${EXPLANATION_COLOR} Manually regenerate new certificates for the PKI infrastructure."
       echo -e "${COMMAND_COLOR}  install-service${EXPLANATION_COLOR} Install the Patches service so it will start on startup. (requires sudo)"
+      echo -e "${COMMAND_COLOR}  import-repository${EXPLANATION_COLOR} Imports an existing repository into Patches"
       echo -e "${COMMAND_COLOR}  import-keys${EXPLANATION_COLOR} Import existing keys for use with Patches. It accepts one of two argument styles."
       echo -e "${EXPLANATION_COLOR}              The first expects two arguments, the first is the file path to a root CA's public key"
       echo -e "${EXPLANATION_COLOR}              (and optionally private key) in PEM format. The second is the file path to the Patches"
@@ -1615,53 +1707,13 @@ case $1 in
 
   stop)
 
-    for container in "${containers[@]}"; do
-      patches_echo "Stopping container: $container"
-      podman stop "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
-    done
+    patches_stop
 
     ;;
 
   start)
 
-    if [[ ! -s ${SCRIPT_DIR}/.container-info-patches.txt ]]; then
-      patches_echo "Patches must be set up before running. Please run 'patches setup' first."
-      exit 1
-    fi
-
-    all_containers_running=false
-
-    while true; do
-      all_containers_running=true
-
-      for container in "${containers[@]}"; do
-        patches_echo "Checking container status: $container"
-        status=$(podman container inspect -f '{{.State.Status}}' "$container" 2>/dev/null)
-
-        if [[ "$status" != "running" ]]; then
-          all_containers_running=false
-
-          patches_echo "Starting container: $container"
-          podman start "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
-
-          if [[ $container == "patches-nginx" ]]; then
-            check_nginx_status
-          elif [[ $container == "patches-psql" ]]; then
-            wait_for_postgresql
-          fi
-        fi
-      done
-
-      if [[ $all_containers_running == "true" ]]; then
-        break
-      fi
-
-      if [[ $CONTINUOUS != "TRUE" ]]; then
-        break
-      fi
-
-      sleep 1
-    done
+    patches_start
 
     ;;
 
@@ -1760,6 +1812,37 @@ logs)
   import-keys)
 
     import_keys "$@"
+
+    ;;
+
+  import-repository)
+
+    local location
+
+    while true; do
+      patches_read "Enter the location of the repository you would like to import. This should be a directory containing a catalog file and associated repository files."
+      import_directory=${RETURN_VALUE}
+
+      if validate_directory "$import_directory"; then
+        if ! find "$import_directory" -type f -name "*.xml" -print -quit | grep -q .; then
+          patches_echo "The specified location does not contain any XML files. Please make sure it is a valid repository directory. Exiting." --error
+          exit 1
+        else
+          break
+        fi
+      else
+        patches_echo "The specified location is not valid. Please try again." --error
+      fi
+    done
+
+    if ! ask_yes_no "Patches will import $import_directory. When it does this it will remove the original directory to conserve space after the import. Patches will also be stopped during the import and then started afterwards. This should only take a few seconds to complete. Would you like to continue?"; then
+      patches_echo "Terminating." --error
+      exit 1
+    fi
+
+    patches_stop
+    mv $import_directory ${TOP_DIR}/repos/xml
+    patches_start
 
     ;;
 
