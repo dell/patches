@@ -525,10 +525,9 @@ function run_nginx() {
   else
     # Ask if user wants to run as sudo
     if ask_yes_no "In order to run Patches on ports 80 (redirects to 443) and 443 you will need to change the unprivileged ports on your host to start at port 80. This allows non-root users to bind to any port 80 and higher. You can continue without sudo privileges in which case nginx will run on a high port of your choosing. Users will have to explicitly add the port to all URLs when doing this. Do you want to run as sudo?"; then
-      patches_echo "Enter your password:"
-      sudo -v
+      patches_echo "Enter your password *NOTE: on STIG\'d servers you will have to do enter the password multiple times*:"
 
-      if sudo -n true 2>/dev/null; then
+      if sudo -v 2>/dev/null; then
         patches_echo "Current user is a sudo user"
       else
         patches_echo "This user does not have sudo privileges. You will need to give this user sudo privileges in order to continue." --error
