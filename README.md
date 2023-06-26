@@ -90,7 +90,7 @@ It is not important that you understand this to use Patches, but it is provided 
 If you are on RHEL-family systems, including Rocky, you can copy and paste this code into your terminal to run the Patches and skip right to the section [Before You Run Setup](#before-you-run-setup):
 
 ```
-wget https://github.com/dell/patches/blob/main/bootstrap.sh
+wget https://raw.githubusercontent.com/dell/patches/main/bootstrap.sh
 chmod +x ./bootstrap.sh
 ./bootstrap.sh
 ```
