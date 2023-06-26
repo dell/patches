@@ -37,19 +37,19 @@ You can run Dell Repository Manager on a server separate from Patches however, t
    4. Under *Select Systems* you can either do all systems or some subset of systems of your choosing.
    5. Under *Operating Systems* you can either pick specific operating systems or all. **NOTE**: the  iDRAC only accepts exe files. If you plan on pushing updates to the iDRAC make sure you select *Windows-64*
    6. For *Components* you may either download all of them or select specific components.
-10. Next, you will need to download the repository data. In the top bar click the *Download* button. Select the `drm_repos/drm_download` folder.
+10. Next, you will need to download the repository data. In the top bar click the *Download* button. Select the `<your_patches_directory>/drm_repos/drm_download` folder.
     1.  **WARNING**: DRM downloader is persnickety. You **must** select a bottom-level directory (IE: there are no other subdirectories in the folder) for it to work. `drmuser` must also be the owner of the bottom level directory **and** the parent directory. Anything else will result in DRM complaining about an invalid directory.
     2.  **WARNING**: I suggest typing in the path to the directory directly rather than using the browser. If at any point in the folder path DRM does not have permissions it will complain and error. It is easiest to direct it with the absolute path.
 11. After you start the download, you can monitor the progress of the download in the jobs tab by clicking on *Repository Manager* at the top and then *Jobs*
 
 ![](images/2023-02-03-10-55-18.png)
 
-12. Next, you will need to export the repository. Select your repository's checkbox and then click *Export*. Select the `drm_repos/drm_export` folder.
+12. Next, you will need to export the repository. Select your repository's checkbox and then click *Export*. Select the `<your_patches_directory>/drm_repos/drm_export` folder.
     1.  **NOTE**: You can monitor the progress of the export in the Jobs tab as you did with the download.
 13. Finally, you will need to move the exported repository into the patches repository directory. This move is necessary because the patches container will not have access to the folders owned by DRM user. 
-    1.  First make a folder for your new repository with `mkdir repos/xml/<FOLDER_NAME>`. **Make sure you do not run this `mkdir` command as root**. For example: `mkdir repos/xml/R7525` as in my case I only downloaded the files for the R7525.
-    2.  Next, move the files from the drm_export directory to your new directory with `sudo mv drm_repos/drm_export/* repos/xml/<FOLDER_NAME> && sudo chown <YOUR_USER>: -R repos`
-    3.  Confirm everything was done correctly by running `ls -al repos/xml` and verifying that your user and group are the owner of the folder you created (in my case grant:grant):
+    1.  First make a folder for your new repository with `mkdir <your_patches_directory>/repos/xml/<FOLDER_NAME>`. **Make sure you do not run this `mkdir` command as root**. For example: `mkdir <your_patches_directory>/repos/xml/R7525` as in my case I only downloaded the files for the R7525.
+    2.  Next, move the files from the drm_export directory to your new directory with `sudo mv drm_repos/drm_export/* <your_patches_directory>/repos/xml/<FOLDER_NAME> && sudo chown <YOUR_USER>: -R repos`
+    3.  Confirm everything was done correctly by running `ls -al <your_patches_directory>/repos/xml` and verifying that your user and group are the owner of the folder you created (in my case grant:grant):
 
             [grant@patches patches]$ ls -al repos/xml/
             total 16
@@ -58,4 +58,5 @@ You can run Dell Repository Manager on a server separate from Patches however, t
             drwxrwxr-x. 346 grant grant 12288 Feb  3 11:03 R7525
             drwxrwxr-x.   2 grant grant    21 Feb  3 10:40 parsed
 
-14. For any other repositories you want to create repeat the process of downloading the repository, exporting it, and then move it to a new folder **with the correct permissions** (this is key) in the `repos/xml` folder. For example, if I were going to add a new repo with all PowerEdge servers, I could create the repo in DRM, export it, and then move it to a new folder `repos/xml/PowerEdge`. 
+14. **WARNING** You may noticed the parsed folder. This is required for Patches to operate.
+15. For any other repositories you want to create repeat the process of downloading the repository, exporting it, and then move it to a new folder **with the correct permissions** (this is key) in the `<your_patches_directory>/repos/xml` folder. For example, if I were going to add a new repo with all PowerEdge servers, I could create the repo in DRM, export it, and then move it to a new folder `<your_patches_directory>/repos/xml/PowerEdge`. 

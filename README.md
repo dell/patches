@@ -6,6 +6,7 @@
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
     - [STIGs](#stigs)
+      - [How to Apply](#how-to-apply)
   - [Our Stance on Security](#our-stance-on-security)
   - [System Requirements](#system-requirements)
   - [Patches Architecture Overview](#patches-architecture-overview)
@@ -49,7 +50,7 @@ It also provides an admin panel which tracks download and usage statistics from 
 
 Patches can be run on any *nix system that supports `podman` but all testing was done on and the instructions written for [Rocky Linux](https://rockylinux.org/) and we strongly suggest this be the operating system of choice for Patches.
 
-Last tested version was Rocky Linux 9.2.
+We have tested on Rocky Linux 8.8/9.2.
 
 Any RHEL-based system should work out of the box. Please post an issue if you encounter issues.
 
@@ -64,6 +65,26 @@ We recommend you use the Minimal distribution.
 If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organization Rocky Linux comes with an option in the installer to automatically STIG the operating system. See [this official Rocky Linux guide](https://docs.rockylinux.org/books/disa_stig/disa_stig_part1/) for how to create a STIG-hardened Rocky instance automatically.
 
 **Note** At the time of writing the docs only mention Rocky Linux 8 but it is available for Rocky Linux 9 as well.
+
+#### How to Apply
+
+1. During the Rocky installation process you will reach the installation splash screen. 
+2. **Warning** you will have to create custom partitions to comply with the STIGs as seen below:
+
+![](images/2023-06-26-11-21-32.png)
+
+3. Click security profile:
+
+![](images/2023-06-26-11-11-57.png)
+
+4. Select DISA STIG with GUI for Red Hat Enterprise 9. You can also select the non-GUI version.
+   1. Note: The STIGs for RHEL 9 are in draft at time of writing. If you need STIGs that are not in draft you can use Rocky Linux 8.
+
+![](images/2023-06-26-11-13-22.png)
+
+5. If you have done everything correctly the Security Profile should say "Everything Okay"
+
+![](images/2023-06-26-11-27-06.png)
 
 ## Our Stance on Security
 
@@ -89,10 +110,12 @@ It is not important that you understand this to use Patches, but it is provided 
 
 If you are on RHEL-family systems, including Rocky, you can copy and paste this code into your terminal to run the Patches and skip right to the section [Before You Run Setup](#before-you-run-setup):
 
+**If your system is STIG'd, it will ask you for the sudo password on each command.**
+
 ```
-wget https://raw.githubusercontent.com/dell/patches/main/bootstrap.sh
-chmod +x ./bootstrap.sh
-./bootstrap.sh
+sudo wget https://raw.githubusercontent.com/dell/patches/main/bootstrap.sh
+sudo chown $(logname):$(id -gn $(logname)) ./bootstrap.sh
+sudo bash ./bootstrap.sh
 ```
 
 ### Download Patches
@@ -167,7 +190,7 @@ It's that simple. After the setup completes patches will be up, running, and ava
 
 If you need to pull specific patches there are detailed instructions for manually pulling repositories located at [Download Repositories with Dell Repository Manager](./MANUALLY_PULL_REPOS.md)
 
-If you already have downloaded and exported the repository from DRM skip to step #13.
+If you already have downloaded and exported the repository from DRM skip to [step #13 in Download Repositories with Dell Repository Manager](MANUALLY_PULL_REPOS.md).
 
 ### Setting Up Certs
 
