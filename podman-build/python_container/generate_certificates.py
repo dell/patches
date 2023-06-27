@@ -322,6 +322,17 @@ with open('config.yml', 'r') as stream:
     except yaml.YAMLError as exc:
         logger.error(exc)
 
+# Check if PATCHES_ADMINISTRATOR is present in clients
+logger.info("Checking to make sure PATCHES_ADMINISTRATOR is present in clients.")
+patches_administrator = yaml_data.get('PATCHES_ADMINISTRATOR')
+clients = yaml_data.get('clients')
+
+if patches_administrator not in clients:
+    logger.error(f"PATCHES_ADMINISTRATOR '{patches_administrator}' is not in the list of clients in config.yml."
+                 f" This is a fatal error. If you are generating certificates automatically, one of the clients "
+                 f"must be the PATCHES_ADMINISTRATOR. Please review config.yml and update clients accordingly.")
+    exit(1)
+
 logger.info("Creating the certificate directory.")
 if not os.path.exists(yaml_data['CERT_DIRECTORY']):
     os.makedirs(yaml_data['CERT_DIRECTORY'])

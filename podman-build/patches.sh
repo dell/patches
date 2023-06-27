@@ -1328,7 +1328,30 @@ EOF
 )
 
   print_ascii_art "$ascii_art"
-      
+
+  eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
+
+  # Print Setup Summary with random color codes
+  echo -e "\e[$(get_random_color)m################################################################################
+  # Setup Summary:
+  #   Patches Administrator Name: ${PATCHES_ADMINISTRATOR}
+  #   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${DOMAIN}
+  #   Patches Client Certificate Directory: ${CERT_DIRECTORY}
+  #
+  # Next Steps:
+  #   1. Grab your client certs (.p12) from ${CERT_DIRECTORY} and download them to
+  #      your local computer.
+  #   2. Follow the instructions at https://github.com/dell/patches#setting-up-certs
+  #   3. Don't forget after you import them to restart your browser!
+  #   4. Add ${SERVER_NAME}.${DOMAIN} to your DNS server
+  #
+  # Helpful Tips:
+  #   - If you need to add an admin use ${SCRIPT_DIR}/patches.sh add-admin <admin_common_name>
+  #   - If you are using OpenManage Enterprise, check out: 
+  #     https://github.com/dell/patches#openmanage-enterprise-ome
+  #   - Run \`${SCRIPT_DIR}/patches.sh -h\` for help
+  ################################################################################
+  \e[0m"
 }
 
 # import_keys is responsible for importing certificates and keys for Patches

@@ -19,7 +19,7 @@
   - [Before You Run Setup](#before-you-run-setup)
     - [Integrating Into Existing PKI Infrastructure](#integrating-into-existing-pki-infrastructure)
       - [Import Keys](#import-keys)
-      - [Manually Importing Certificates](#manually-importing-certificates)
+      - [Manually Importing Root CA Certificates](#manually-importing-root-ca-certificates)
     - [Customizing Setup](#customizing-setup)
       - [Users](#users)
   - [Running Setup](#running-setup)
@@ -174,7 +174,7 @@ If you are using PKCS#12, you only need the PKCS#12 file including both the serv
 
 To import keys, change to the `patches/podman-build` directory and run `bash patches.sh import-keys <your_pkcs#12 file>` or `bash patches.sh import-keys <root_ca.pem> <patches_server_cert.pem>`.
 
-#### Manually Importing Certificates
+#### Manually Importing Root CA Certificates
 
 **This will only work for new root CA certs. If you want to change the PKI infrastructure you must run `bash podman-build/patches generate-certificates` or `bash podman-build/patches import-keys <args>`**
 
@@ -216,7 +216,7 @@ If you used Patches to generate user certificates, you will need to download the
 
 If you used Patches to setup your certs, they will all be in the folder `<your_path_to_patches>/server_certs`.
 
-1. Download the `<your_path_to_patches>/server_certs` to your desktop. If you are running Windows you can do this with [WinSCP](https://winscp.net/eng/index.php).
+1. Download the client certs in `<your_path_to_patches>/server_certs` to your desktop. If you are running Windows you can do this with [WinSCP](https://winscp.net/eng/index.php).
 2. We have tested with Brave Browser, Chrome, and Firefox. All three use the PKCS#12 format for user certs. Begin by going to your browser settings.
 
 ![](images/2023-06-08-12-59-58.png)
@@ -253,6 +253,8 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 11. If everything has worked up to this point, you should connect to Patches and see that the connection is secure like this:
 
 ![](images/2023-06-08-13-12-19.png)
+
+12. Restart your browser. **The new certificates will not load until you have done this!**
 
 ## Admin Panel
 
