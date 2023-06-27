@@ -2,6 +2,7 @@
 
 - [Patches](#patches)
   - [Beta](#beta)
+  - [Quick Start](#quick-start)
   - [What Is Patches?](#what-is-patches)
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
@@ -35,6 +36,10 @@
 ## Beta
 
 Patches is currently in beta. The main branch will have the latest build but you may encounter bugs or problems. Please report them in the issue tracker.
+
+## Quick Start
+
+Jump down to [The Easy Installation](#the-easy-installation) and copy the commands! Skip the rest!
 
 ## What Is Patches?
 
@@ -110,7 +115,7 @@ It is not important that you understand this to use Patches, but it is provided 
 
 If you are on RHEL-family systems, including Rocky, you can copy and paste this code into your terminal to run the Patches and skip right to the section [Before You Run Setup](#before-you-run-setup):
 
-**If your system is STIG'd, it will ask you for the sudo password on each command.**
+**If your system is STIG'd, you need to paste each command separately!**
 
 ```
 sudo wget https://raw.githubusercontent.com/dell/patches/main/bootstrap.sh
