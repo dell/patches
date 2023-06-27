@@ -1881,18 +1881,17 @@ logs)
 
   import-repository)
 
-    local location
-
     while true; do
       patches_read "Enter the location of the repository you would like to import. This should be a directory containing a catalog file and associated repository files."
       import_directory=${RETURN_VALUE}
 
       if validate_directory "$import_directory"; then
-        if ! find "$import_directory" -type f -name "*.xml" -print -quit | grep -q .; then
-          patches_echo "The specified location does not contain any XML files. Please make sure it is a valid repository directory. Exiting." --error
-          exit 1
-        else
+        if [[ -n $(find "$import_directory" -maxdepth 1 -type f -name "*.xml") ]]; then
+          patches_echo "Directory validation complete..."
           break
+        else
+          patches_echo "There are no XML files found in the directory ${import_directory}. The catalog XML must be present - are you sure you got the path correct? Exiting." --error >&2  # Redirect error message to stderr
+          exit 1
         fi
       else
         patches_echo "The specified location is not valid. Please try again." --error
@@ -1905,7 +1904,7 @@ logs)
     fi
 
     patches_stop
-    mv $import_directory ${TOP_DIR}/repos/xml
+    mv "$import_directory" "${TOP_DIR}/repos/xml"
     patches_start
 
     ;;
