@@ -44,8 +44,7 @@ days: 1095
 # Make sure one of these is the same as PATCHES_ADMINISTRATOR if you are not using your
 # own certificates.
 clients:
-  grant: # The name you want to use for the certificate/CN for the server. 
-         # This will also be assigned to the subject alternative name
+  grant: # CHANGE THIS TO YOUR CLIENT NAME
 
     # The domain name to use for the certificate
     domain: "lan"
@@ -80,8 +79,7 @@ clients:
     # How many days the certs should be valid. Default is three years.
     days: 1095
 
-  grace: # The name you want to use for the certificate/CN for the server. 
-         # This will also be assigned to the subject alternative name
+  grace: # CHANGE THIS TO YOUR CLIENT NAME
 
     # The domain name to use for the certificate
     domain: "lan"
@@ -115,6 +113,8 @@ clients:
 
     # How many days the certs should be valid. Default is three years.
     days: 1095
+# ADD MORE CLIENTS HERE IF NEEDED
+
 
 ################################################################################
 # PostgreSQL Settings                                                          #
