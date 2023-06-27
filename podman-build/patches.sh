@@ -1451,7 +1451,7 @@ function validate_certs() {
 #   None
 #
 # Returns:
-#   None
+#   0 if all images exist, 1 otherwise
 #
 check_images() {
   # Making sure Patches build has already run...
@@ -1472,10 +1472,13 @@ check_images() {
   if [[ ${#missing_images[@]} -gt 0 ]]; then
     patches_echo "There are missing Patches images. Running build to build the images..."
     patches_build
+    return 1
   else
     patches_echo "Patches images already present."
+    return 0
   fi
 }
+
 
 # Function: validate_directory
 #
@@ -1508,6 +1511,12 @@ function validate_directory() {
 # Returns: None
 #
 function patches_stop() {
+
+  if ! check_images; then
+    patches_echo "Patches must be set up before running. Please run 'patches setup' first."
+    exit 1
+  fi
+  
   for container in "${containers[@]}"; do
     patches_echo "Stopping container: $container"
     podman stop "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
@@ -1527,7 +1536,7 @@ function patches_stop() {
 # Returns: None
 #
 function patches_start() {
-  if [[ ! -s ${SCRIPT_DIR}/.container-info-patches.txt ]]; then
+  if ! check_images; then
     patches_echo "Patches must be set up before running. Please run 'patches setup' first."
     exit 1
   fi
@@ -1898,14 +1907,27 @@ logs)
       fi
     done
 
-    if ! ask_yes_no "Patches will import $import_directory. When it does this it will remove the original directory to conserve space after the import. Patches will also be stopped during the import and then started afterwards. This should only take a few seconds to complete. Would you like to continue?"; then
-      patches_echo "Terminating." --error
-      exit 1
+    # Only display this message if all the patches images are actually present
+    if check_images; then
+      if ! ask_yes_no "Patches will import $import_directory. When it does this it will remove the original directory to conserve space after the import. Patches will also be stopped during the import and then started afterwards. This should only take a few seconds to complete. Would you like to continue?"; then
+        patches_echo "Terminating." --error
+        exit 1
+      fi
     fi
 
-    patches_stop
-    mv "$import_directory" "${TOP_DIR}/repos/xml"
-    patches_start
+    if check_images; then
+      patches_stop
+      mv "$import_directory" "${TOP_DIR}/repos/xml"
+      patches_start
+    else
+      mv "$import_directory" "${TOP_DIR}/repos/xml"
+      if ask_yes_no "It looks like the Patches images are not yet built/configured. Do you want to run setup now?"; then
+        patches_setup
+      else
+        patches_echo "Exiting."
+        exit 0
+      fi
+    fi
 
     ;;
 
