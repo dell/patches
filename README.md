@@ -43,11 +43,16 @@ Jump down to [The Easy Installation](#the-easy-installation) and copy the comman
 
 ## What Is Patches?
 
-Patches is an offline repository with a web frontend that hosts all of Dell's PowerEdge patches. Its primary purpose is to provide the ability to host PowerEdge patches in offline environments. The web frontend is a rough mock-up of Dell's support website. It allows users to search, view, and download available Patches. It also provides a web server for integration into Dell's OpenManage Enterprise.
+Patches is a container-based, offline repository with a web frontend that hosts all of Dell's PowerEdge patches. What it gives you:
 
-Patches uses certificates for authentication and it requires any connecting users to present a valid certificate to access the site.
-
-It also provides an admin panel which tracks download and usage statistics from the web UI.
+- The ability to host all PowerEdge patches with a GUI in a totally offline environment
+- Automatically deploys httpd and hosts all repositories for easy integration with [Open Manage Enterprise (OME)](https://www.dell.com/support/kbdoc/en-us/000175879/support-for-openmanage-enterprise#OME-Download)
+- Provides search functionality for patches
+- Provides a web-GUI for tracking patch download statistics
+- Provides a certificate-driven authentication system to meet compliance requirements (works with CACs)
+  - Provides provisions for importing certs from your own PKI infrastructure
+- Runs on a fully STIG-compliant platform (see [STIGs](#stigs) and [Our Stance on Security](#our-stance-on-security))
+- Setup is fully automated
 
 **Beta**: In the full release we will add the ability to disable cert checking but for the beta it is force enabled. Patches is primarily designed to integrate into an existing PKI infrastructure.
 
