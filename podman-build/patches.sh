@@ -1336,9 +1336,11 @@ EOF
   # Setup Summary:
   #   Patches Administrator Name: ${PATCHES_ADMINISTRATOR}
   #   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${DOMAIN}
-  #   Patches Client Certificate Directory: ${CERT_DIRECTORY}
+  #   Patches Client Certificate Directory: ${TOP_DIR}/${CERT_DIRECTORY}
   #
   # Next Steps:
+  #   Next you need to set up client certificates so you can access patches!
+  #
   #   1. Grab your client certs (.p12) from ${CERT_DIRECTORY} and download them to
   #      your local computer.
   #   2. Follow the instructions at https://github.com/dell/patches#setting-up-certs
