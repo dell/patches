@@ -337,15 +337,40 @@ function parse_yaml {
 # Returns: None
 #
 configure_administrator() {
-    patches_echo "Configuring ${1} as an administrator for the PostgreSQL database..."
-    echo "-- SQL script for setting up admin user
-          \set admin_user '${1}'
-          INSERT INTO roles (title) VALUES ('admin');
-          INSERT INTO roles (title) VALUES ('user');
-          INSERT INTO users (name) VALUES (:'admin_user');
-          INSERT INTO user_roles (username, role_id, updating_user) VALUES (:'admin_user', 1, 'System');
-          " | podman exec -i "patches-psql" psql postgresql://"${PSQL_USERNAME}":"${PSQL_PASSWORD}"@patches-psql:"${PSQL_PORT}"/"${POSTGRES_DB}"
-    patches_echo "${1} added as a Patches administrator."
+  patches_echo "Configuring ${1} as an administrator for the PostgreSQL database..."
+
+  # URL encode the password
+  urlencode() {
+      local string="${1}"
+      local strlen=${#string}
+      local encoded=""
+      local pos c o
+
+      for ((pos = 0; pos < strlen; pos++)); do
+          c="${string:$pos:1}"
+          case "$c" in
+              [-_.~a-zA-Z0-9]) o="${c}" ;;
+              *) printf -v o '%%%02x' "'$c"
+          esac
+          encoded+="${o}"
+      done
+      echo "${encoded}"
+  }
+  encoded_password=$(urlencode "${PSQL_PASSWORD}")
+
+  # Construct the connection URL with the encoded password
+  connection_url="postgresql://${PSQL_USERNAME}:${encoded_password}@patches-psql:${PSQL_PORT}/${POSTGRES_DB}"
+
+  # Execute the SQL script using the connection URL
+  echo "-- SQL script for setting up admin user
+        \set admin_user '${1}'
+        INSERT INTO roles (title) VALUES ('admin');
+        INSERT INTO roles (title) VALUES ('user');
+        INSERT INTO users (name) VALUES (:'admin_user');
+        INSERT INTO user_roles (username, role_id, updating_user) VALUES (:'admin_user', 1, 'System');
+        " | podman exec -i "patches-psql" psql "${connection_url}"
+
+  patches_echo "${1} added as a Patches administrator."
 }
 
 # Function: cleanup_containers
@@ -577,7 +602,7 @@ function run_nginx() {
   else
     # Ask if user wants to run as sudo
     if ask_yes_no "In order to run Patches on ports 80 (redirects to 443) and 443 you will need to change the unprivileged ports on your host to start at port 80. This allows non-root users to bind to any port 80 and higher. You can continue without sudo privileges in which case nginx will run on a high port of your choosing. Users will have to explicitly add the port to all URLs when doing this. Do you want to run as sudo?"; then
-      patches_echo "Enter your password *NOTE: on STIG\'d servers you will have to do enter the password multiple times*:"
+      patches_echo "Enter your password *NOTE: on STIGed servers you will have to do enter the password multiple times*:"
 
       if sudo -v 2>/dev/null; then
         patches_echo "Current user is a sudo user"
@@ -1159,9 +1184,9 @@ function patches_setup() {
   if [ ${#xml_files[@]} -gt 0 ]; then 
       echo true 
   else
-      patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case. If you already have the repository, move it to your Patches server and then run \`bash ${SCRIPT_DIR}/patches.sh import-repository\` to import it."
+      patches_echo "We did not find any XML files in the repos/xml/* folders. Your repo XML file should be located in repos/xml/REPO_NAME/repo.xml. Note: the .xml extension is lower case."
 
-      if ask_yes_no "Do you want to use Dell Repository Manager to pull the Enterprise Catalog automatically?"; then
+      if ask_yes_no "Do you want to use Dell Repository Manager to pull the Enterprise Catalog automatically? If you already have the repository, you may ctrl+c, and then import your repo with \`bash ${SCRIPT_DIR}/patches.sh import-repository\` to import it."; then
         # Check if the DRM container image already exists
         build_drm
       else
@@ -1502,7 +1527,7 @@ check_images() {
 
   # Handling missing images
   if [[ ${#missing_images[@]} -gt 0 ]]; then
-    patches_echo "There are missing Patches images. Running build to build the images..."
+    read -n 1 -s -r -p $'\033[1;35mThere are missing Patches images. The Patches build will now run. Press any key to continue.\033[0m'
     patches_build
     return 1
   else
@@ -1898,21 +1923,25 @@ logs)
     ;;
 
   generate-certificates)
-      if ask_yes_no "In order to generate new certificates you will also have to rerun the Patches setup. Do you want to continue?"; then
+      # Check if any files exist in CERT_DIRECTORY or ROOT_CERT_DIRECTORY
+      if [[ -n $(find "${TOP_DIR}/${CERT_DIRECTORY}" -type f -print -quit) || -n $(find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -print -quit) ]]; then
+          if ask_yes_no "It looks like certificates already exist. Do you want to delete them? If you say no, we will skip certificate generation."; then
+              # Delete all files from CERT_DIRECTORY
+              find "${TOP_DIR}/${CERT_DIRECTORY}" -type f -delete
 
-        # Delete all files from CERT_DIRECTORY
-        find "${TOP_DIR}/${CERT_DIRECTORY}" -type f -delete
+              # Delete all files from ROOT_CERT_DIRECTORY
+              find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -delete
 
-        # Delete all files from ROOT_CERT_DIRECTORY
-        find "${TOP_DIR}/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" -type f -delete
-
-        generate_certificates
-        patches_setup
+              generate_certificates
+              patches_setup
+          else
+              patches_echo "Skipping certificate generation."
+          fi
       else
-        patches_echo "Terminating."
-        exit 1
+          generate_certificates
+          patches_setup
       fi
-    ;;
+      ;;
 
   import-keys)
 
@@ -1939,15 +1968,11 @@ logs)
       fi
     done
 
-    # Only display this message if all the patches images are actually present
     if check_images; then
       if ! ask_yes_no "Patches will import $import_directory. When it does this it will remove the original directory to conserve space after the import. Patches will also be stopped during the import and then started afterwards. This should only take a few seconds to complete. Would you like to continue?"; then
         patches_echo "Terminating." --error
         exit 1
       fi
-    fi
-
-    if check_images; then
       patches_stop
       mv "$import_directory" "${TOP_DIR}/repos/xml"
       patches_start

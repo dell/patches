@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the version to be downloaded
-VERSION="v1.1.2-beta"
+VERSION="v1.1.3-beta"
 
 # Check if the script is being run as root
 if [[ $EUID -ne 0 ]]; then
@@ -368,4 +368,4 @@ EOF
 # Call the function to print the ASCII art
 print_ascii_art "$ascii_art"
 
-echo -e "\nTo get started, run \033[1;32mbash ${INSTALL_DIR}/patches/podman-build/patches.sh setup\033[0m"
+echo -e "\nTo get started, run \033[1;32mbash ${INSTALL_DIR}/podman-build/patches.sh setup\033[0m"

@@ -126,7 +126,7 @@ clients:
 # and the download statistics themselves.
 # This is a known problem with the PSQL container. See https://github.com/docker-library/postgres/issues/111
 PSQL_USERNAME: "patches"
-PSQL_PASSWORD:
+PSQL_PASSWORD: "1qaz!QAZ2wsx@WSX"
 
 # The name of the Patches administrator. This *MUST* match the common name on the certificate of the administrator.
 PATCHES_ADMINISTRATOR: 
