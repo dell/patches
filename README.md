@@ -162,6 +162,8 @@ To import keys, change to the `patches/podman-build` directory and run `bash pat
 
 **This will only work for new root CA certs. If you want to change the PKI infrastructure you must run `bash podman-build/patches generate-certificates` or `bash podman-build/patches import-keys <args>`**
 
+The purpose of this function is that you need to add new root CA certs **AFTER** deploying patches to cover a new user base. It **is not** meant to import certificates on initial install.
+
 1. Make sure your certificates are in PEM format and at least have the root CA public key. You can optionally add the private key.
 2. Copy your root CA cert to `./server_certs/root_certs`
 3. Run `bash podman-build/patches stop && bash podman-build/patches start` to restart the service
