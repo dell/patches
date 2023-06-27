@@ -44,7 +44,7 @@ days: 1095
 # Make sure one of these is the same as PATCHES_ADMINISTRATOR if you are not using your
 # own certificates.
 clients:
-  grant: # CHANGE THIS TO YOUR CLIENT NAME
+  gelante: # CHANGE THIS TO YOUR CLIENT NAME
 
     # The domain name to use for the certificate
     domain: "lan"
@@ -65,7 +65,7 @@ clients:
     organization_unit: "Federal"
 
     # The primary DNS name for the server certificate
-    dns_1: "grant.lan"
+    dns_1: "gelante.lan"
 
     # The secondary DNS name for the server certificate (optional)
     dns_2:
@@ -79,7 +79,7 @@ clients:
     # How many days the certs should be valid. Default is three years.
     days: 1095
 
-  grace: # CHANGE THIS TO YOUR CLIENT NAME
+  geleisi: # CHANGE THIS TO YOUR CLIENT NAME
 
     # The domain name to use for the certificate
     domain: "lan"
@@ -100,7 +100,7 @@ clients:
     organization_unit: "Federal"
 
     # The primary DNS name for the server certificate
-    dns_1: "grace.lan"
+    dns_1: "geleisi.lan"
 
     # The secondary DNS name for the server certificate (optional)
     dns_2:

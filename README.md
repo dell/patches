@@ -8,12 +8,12 @@
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
     - [STIGs](#stigs)
       - [How to Apply](#how-to-apply)
-  - [Our Stance on Security](#our-stance-on-security)
   - [System Requirements](#system-requirements)
+  - [Our Stance on Security](#our-stance-on-security)
+  - [System Requirements](#system-requirements-1)
   - [Patches Architecture Overview](#patches-architecture-overview)
-  - [Installation](#installation)
-    - [The Easy Installation](#the-easy-installation)
-    - [Download Patches](#download-patches)
+  - [The Easy Installation](#the-easy-installation)
+  - [The Long and Manual Installation](#the-long-and-manual-installation)
     - [Install Podman](#install-podman)
     - [Open Ports](#open-ports)
   - [Before You Run Setup](#before-you-run-setup)
@@ -60,7 +60,7 @@ Patches is a container-based, offline repository with a web frontend that hosts 
 
 Patches can be run on any *nix system that supports `podman` but all testing was done on and the instructions written for [Rocky Linux](https://rockylinux.org/) and we strongly suggest this be the operating system of choice for Patches.
 
-We have tested on Rocky Linux 8.8/9.2.
+We have tested on Rocky Linux 9.2.
 
 Any RHEL-based system should work out of the box. Please post an issue if you encounter issues.
 
@@ -96,6 +96,14 @@ If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organizat
 
 ![](images/2023-06-26-11-27-06.png)
 
+## System Requirements
+
+These are the minimums
+ 
+- 1 core
+- 8 GBs of RAM
+- At least 80 GBs of free space on the partition you install to (this will be checked during installation)
+
 ## Our Stance on Security
 
 After initial setup nothing in Patches runs as sudo. Everything runs as user and in fact, if desired, you can run the entire installation as user without ever elevating to sudo. This includes the podman instance that powers Patches.
@@ -114,9 +122,7 @@ It is not important that you understand this to use Patches, but it is provided 
 - Postgresql stores all metadata for the various patches along with the user statistics of who used what Patches
 - An HTTPD container which hosts the raw Dell Repository Manager repos which OME can leverage
 
-## Installation
-
-### The Easy Installation
+## The Easy Installation
 
 If you are on RHEL-family systems, including Rocky, you can copy and paste this code into your terminal to run the Patches and skip right to the section [Before You Run Setup](#before-you-run-setup):
 
@@ -128,7 +134,7 @@ sudo chown $(logname):$(id -gn $(logname)) ./bootstrap.sh
 sudo bash ./bootstrap.sh
 ```
 
-### Download Patches
+## The Long and Manual Installation
 
 1. Go to [the Patches releases](https://github.com/dell/patches/releases)
 2. Download the source code under Assets at the bottom of the page.

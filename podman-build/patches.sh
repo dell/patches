@@ -9,6 +9,7 @@ TOP_DIR=$(cd ${SCRIPT_DIR}/../; pwd)
 NGINX_CONFIG_DIR=${SCRIPT_DIR}/nginx_config
 containers=("patches-psql" "patches-backend" "patches-frontend" "patches-httpd" "patches-nginx" )
 cd ${TOP_DIR}
+IMPORT_KEYS=1  # Used to determine if the code was run with import keys
 
 # Function: patches_echo
 #
@@ -407,7 +408,7 @@ function build_drm() {
 
   podman rm -f -t 0 patches-drm
 
-  if ask_yes_no "The code downloads several 10s of GB of data to populate the Enterprise PowerEdge catalog data for Patches. It checks if you have at least ${REQUIRED_SPACE}GB of disk space available, which is more than what the final container will use. There may be pauses of 60 seconds due to an expect script running to install DRM. Do you want to continue?"; then
+  if ask_yes_no "The code downloads several 10s of GB of data to populate the Enterprise PowerEdge catalog data for Patches. It checks if you have at least ${REQUIRED_SPACE}GB of disk space available, which is more than what the final container will use. There may be pauses of 60 seconds due to an expect script running to install DRM. Do you want to continue? If you would like more granular control of which patches are downloaded see https://github.com/dell/patches/blob/main/MANUALLY_PULL_REPOS.md."; then
 
     # Check available disk space of the partition containing ${TOP_DIR}/repos
     patches_echo "Checking which partition we are using..."
@@ -668,8 +669,8 @@ function generate_certificates() {
   echo "CERT_DIRECTORY=${CERT_DIRECTORY}" >> ${TOP_DIR}/.patches-certificate-generator
 
   # Check to see if the generic client names are still present
-  if [[ -n ${clients_grant+x} ]] && [[ -n ${clients_grace+x} ]]; then
-    if ask_yes_no "The default client names grant and grace are still present in ${SCRIPT_DIR}/config.yml. This means when you generate keys the only clients that will be available will be named grant and grace. You will likely want to change this to your own client information by modifying ${SCRIPT_DIR}/config.yml. See https://github.com/dell/patches#customizing-setup for details. Would you like to stop the setup?"; then
+  if [[ -n ${clients_gelante+x} ]] && [[ -n ${clients_geleisi+x} ]]; then
+    if ask_yes_no "The default client names gelante and geleisi are still present in ${SCRIPT_DIR}/config.yml. This means when you generate keys the only clients that will be available will be named gelante and geleisi. You will likely want to change this to your own client information by modifying ${SCRIPT_DIR}/config.yml. See https://github.com/dell/patches#customizing-setup for details. Would you like to stop the setup?"; then
       patches_echo "Terminating." --error
       exit 1
     fi
@@ -1060,11 +1061,40 @@ function patches_setup() {
       patches_echo "Warning: Unable to determine the operating system." --error
   fi
 
+  # Declare an associative array to store client names
+  declare -A clients
 
+  # Iterate over all defined variables
+  for var in $(declare -p | cut -d' ' -f3); do
+    # Check if the variable starts with "clients_" and extract the client name
+    if [[ $var == clients_* ]]; then
+      IFS='_' read -ra parts <<< "$var"
+      if [[ ${#parts[@]} -gt 2 ]]; then
+        client="${parts[1]}"
+        clients["$client"]=1
+      fi
+    fi
+  done
 
-  # Check if PATCHES_ADMINISTRATOR is empty
+  # Build the client string
+  client_string=""
+  for client in "${!clients[@]}"; do
+    client_string+=" $client"
+  done
+
+  # Trim leading space
+  client_string=${client_string#" "}
+
+  # Print the client string
+  echo "$client_string"
+
+  # Check if PATCHES_ADMINISTRATOR is empty. Will display different text if the user has imported keys vs generated keys
   if [ -z "$PATCHES_ADMINISTRATOR" ]; then
-      patches_read "Please enter the name of the administrator for patches. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel."
+      if [ "$IMPORT_KEYS" -eq 1 ]; then
+          patches_read "Please enter the name of the website administrator for patches. In your current ${SCRIPT_DIR}/config.yml you have defined the clients ${client_string}. Any of these will work as the administrator. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel. This does not create a local account. This account can see download statistics in the patches UI. You can add administrators later with \`${SCRIPT_DIR}/patches.sh add-admin <admin>.\`"
+      else
+          patches_read "Please enter the name of the website administrator for patches. This *MUST* match the common name on the certificate of the administrator. If it does not match the common name on the certificate you will not be able to access the admin panel. This does not create a local account. This account can see download statistics in the patches UI. You can add administrators later with \`${SCRIPT_DIR}/patches.sh add-admin <admin>.\`"
+      fi
       administrator_name=${RETURN_VALUE}
 
       # Update the PATCHES_ADMINISTRATOR line in the config file
@@ -1299,6 +1329,8 @@ EOF
 #   1: If the number of arguments is less than 1 or too many arguments are provided
 #
 function import_keys() {
+
+  IMPORT_KEYS=0
 
   check_images
 
@@ -1619,7 +1651,7 @@ while [[ $# -gt 0 ]]; do
       echo -e "${COMMAND_COLOR}  run${EXPLANATION_COLOR}        Allows you to run a command in the automation server container."
       echo -e "${COMMAND_COLOR}  status${EXPLANATION_COLOR}     Get the status of all the component containers for Patches"
       echo -e "${COMMAND_COLOR}  logs${EXPLANATION_COLOR}       Get the logs for all the Patches services. They will be written to \${TOP_DIR}/logs"
-      echo -e "${COMMAND_COLOR}  add-admin${EXPLANATION_COLOR}   Add an administrator to the admins list for the Patches database"
+      echo -e "${COMMAND_COLOR}  add-admin${EXPLANATION_COLOR}   Add an administrator to the admins list for the Patches database. Expects the name of the administrator as an argument"
       echo -e "${COMMAND_COLOR}  reset-database${EXPLANATION_COLOR} Reset the Patches database and reinitialize it."
       echo -e "${COMMAND_COLOR}  generate-certificates${EXPLANATION_COLOR} Manually regenerate new certificates for the PKI infrastructure."
       echo -e "${COMMAND_COLOR}  install-service${EXPLANATION_COLOR} Install the Patches service so it will start on startup. (requires sudo)"

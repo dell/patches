@@ -200,10 +200,10 @@ check_user_namespace() {
 
   # Check if user namespaces are enabled
   if [[ $(cat /proc/sys/user/max_user_namespaces) -eq 0 ]]; then
-    if ask_yes_no "Error: User namespaces are not enabled. This usually happens when STIGs are applied or on older versions of Arch. Do you want to remediate automatically?"; then
+    if ask_yes_no "Error: User namespaces are not enabled. This usually happens when STIGs are applied or on older versions of Arch. Enabling this will allow the current user and only the current user to run containers on the system. We do this to minimize the privileges required.?"; then
       echo "Enabling user namespaces..."
-      echo "user.max_user_namespaces=15000" | sudo tee -a /etc/sysctl.conf > /dev/null
-      sudo sysctl -p
+      echo "user.max_user_namespaces=15000" | tee -a /etc/sysctl.conf > /dev/null
+      sysctl -p
     else
       patches_echo "Terminating Patches bootstrap. Installation cannot continue." --error
       exit 1
@@ -260,7 +260,7 @@ function ask_installation_location() {
   local location
 
   while true; do
-    patches_read "Where do you want to install Patches? "
+    patches_read "Enter the folder path to the desired Patches installation location"
 
     # Remove trailing slash unless the input is just "/"
     if [[ "$RETURN_VALUE" != "/" ]]; then
@@ -368,4 +368,4 @@ EOF
 # Call the function to print the ASCII art
 print_ascii_art "$ascii_art"
 
-echo -e "\nTo get started, run \033[1;32mbash ./patches/podman-build/patches.sh setup\033[0m"
+echo -e "\nTo get started, run \033[1;32mbash ${INSTALL_DIR}/patches/podman-build/patches.sh setup\033[0m"
