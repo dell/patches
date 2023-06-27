@@ -27,6 +27,7 @@
     - [Setting Up Certs](#setting-up-certs)
   - [Admin Panel](#admin-panel)
   - [OpenManage Enterprise (OME)](#openmanage-enterprise-ome)
+  - [How to Pull New Patches](#how-to-pull-new-patches)
   - [How We Version](#how-we-version)
     - [Major Version](#major-version)
     - [Minor Version](#minor-version)
@@ -291,6 +292,10 @@ To access the admin panel you must be using a cert whose common name matches an 
 8. After you add the baseline it will automatically run, but you can also check compliance by clicking the check box next to the baseline and selecting check compliance
 
 ![](images/2023-06-21-10-58-12.png)
+
+## How to Pull New Patches
+
+Run `<your_patches_directory>/podman-build/patches.sh pull-patches`
 
 ## How We Version
 

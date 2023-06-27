@@ -1350,6 +1350,7 @@ EOF
   #   - If you are using OpenManage Enterprise, check out: 
   #     https://github.com/dell/patches#openmanage-enterprise-ome
   #   - Run \`${SCRIPT_DIR}/patches.sh -h\` for help
+  #   - If you want to pull new patches run \`${SCRIPT_DIR}/patches.sh pull-patches\`
   ################################################################################
   \e[0m"
 }
@@ -1551,6 +1552,7 @@ check_images() {
   # Handling missing images
   if [[ ${#missing_images[@]} -gt 0 ]]; then
     read -n 1 -s -r -p $'\033[1;35mThere are missing Patches images. The Patches build will now run. Press any key to continue.\033[0m'
+    echo 
     patches_build
     return 1
   else
@@ -1838,11 +1840,22 @@ case $1 in
 
     podman rm -f -t 0 patches-drm
 
+    # https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31908626
+
+    if ! ask_yes_no "There may be a Patches outage at stages of the pull as patches are reimported. Do you want to continue?"; then
+      patches_echo "Terminating." --error
+      exit 1
+    fi
+
     build_drm
+
+    patches_stop
+    patches_start
 
     # Stop and remove the container
     patches_echo "Stopping and removing the DRM container..."
     podman rm -f -t 0 patches-drm
+    patches_echo "New patches pulled!"
 
     ;;
 
@@ -2001,7 +2014,7 @@ logs)
       patches_start
     else
       mv "$import_directory" "${TOP_DIR}/repos/xml"
-      if ask_yes_no "It looks like the Patches images are not yet built/configured. Do you want to run setup now?"; then
+      if ask_yes_no "It looks like the Patches images are not yet configured. Do you want to run setup now?"; then
         patches_setup
       else
         patches_echo "Exiting."
