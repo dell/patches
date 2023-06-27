@@ -247,7 +247,8 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 
 ![](images/2023-06-08-13-09-16.png)
 
-10. Next browse to the Patches IP/hostname. You should see a window pop up like this one:
+10. Restart your browser. **The new certificates will not load until you have done this!**
+11. Next browse to the Patches IP/hostname. You should see a window pop up like this one:
 
 ![](images/2023-06-08-13-10-42.png)
 
@@ -255,7 +256,6 @@ If you used Patches to setup your certs, they will all be in the folder `<your_p
 
 ![](images/2023-06-08-13-12-19.png)
 
-12. Restart your browser. **The new certificates will not load until you have done this!**
 
 ## Admin Panel
 
