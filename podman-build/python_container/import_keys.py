@@ -245,7 +245,10 @@ def convert_pkcs_to_pem(pkcs_file, server_pem_folder, root_ca_pem_folder, passwo
 
     # Deserialize PKCS file
     logger.info("Deserializing PKCS file...")
-    pkcs12_data = pkcs12.load_key_and_certificates(pkcs_data, password)
+    if password is not None:
+        pkcs12_data = pkcs12.load_key_and_certificates(pkcs_data, password.encode('utf-8'))
+    else:
+        pkcs12_data = pkcs12.load_key_and_certificates(pkcs_data)
 
     # Extract common names
     logger.info("Extracting common names from the server cert and root cert...")

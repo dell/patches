@@ -192,7 +192,7 @@ def generate_pkcs12_certificate(name: str, private_key: rsa.RSAPrivateKey, certi
         cert=certificate,
         cas=[root_certificate],
         encryption_algorithm=serialization.BestAvailableEncryption(
-            password.encode()) if password else serialization.NoEncryption(),
+            password.encode('utf-8')) if password else serialization.NoEncryption(),
     )
 
     return pkcs12_data

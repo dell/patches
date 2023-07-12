@@ -14,7 +14,8 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.x509 import Certificate
 from cryptography.x509.oid import NameOID
 
-from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger, update_config_file
+from helper_functions import patches_read, combine_keys_to_pem, generate_pkcs12_certificate, PatchesLogger, \
+    update_config_file
 
 # Get the logger instance
 logger = PatchesLogger.get_logger()
@@ -53,8 +54,8 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
         # Check if user wants to use existing key and certificate files
         while True:
             use_existing_files = patches_read(f"{key_file} and {crt_file} were found in "
-                                       f"{os.path.abspath(root_cert_directory)}. Do you want to use these files "
-                                       f"instead of creating new certificates? (yes/no): ")
+                                              f"{os.path.abspath(root_cert_directory)}. Do you want to use these files "
+                                              f"instead of creating new certificates? (yes/no): ")
             if use_existing_files.lower() == 'yes':
                 # Load key and certificate files
                 logger.info('Reading existing root CA certificate and private key...')
@@ -77,8 +78,9 @@ def create_root_ca(country, state, locality, organization_name, root_ca_name, ro
 
     elif os.path.isfile(pem_file):
         while True:
-            use_existing = patches_read(f"{pem_file} was found in {os.path.abspath(root_cert_directory)}. Do you want to use "
-                                 f"that file instead of creating a new certificate? (yes/no): ")
+            use_existing = patches_read(
+                f"{pem_file} was found in {os.path.abspath(root_cert_directory)}. Do you want to use "
+                f"that file instead of creating a new certificate? (yes/no): ")
             if use_existing.lower() == "yes":
                 # Load PEM file
                 logger.info('Reading existing root CA certificate in PEM format...')
@@ -291,7 +293,7 @@ def create_ssl_cert(
         password = getpass(f"Enter the PKCS#12 password you want to use for the host {host_name}: ")
 
     logger.info("Writing the key to PKCS#12 because Firefox/Chrome do not support both cert/key in the same file"
-                 " with PEM.")
+                " with PEM.")
     pkcs12_cert = generate_pkcs12_certificate(f"{host_name.replace('*.', '')}", private_key, public_key, root_cert,
                                               password)
     with open(os.path.join(cert_directory, f"{host_name.replace('*.', '')}.p12"), "wb") as f:
@@ -411,9 +413,9 @@ pkcs_password = None
 
 while pkcs_password is None:
     response = patches_read("Do you want to add a password to the PKCS#12 certificates? The password will encrypt the "
-                     "PKCS#12 certificate. If you do not add a password, the certificate will work with Chrome and "
-                     "Chrome-like browsers, but does not work with Firefox. See "
-                     "https://bugzilla.mozilla.org/show_bug.cgi?id=773111. Type yes or no.")
+                            "PKCS#12 certificate. If you do not add a password, the certificate will work with Chrome "
+                            "and Chrome-like browsers, but does not work with Firefox. See "
+                            "https://bugzilla.mozilla.org/show_bug.cgi?id=773111. Type yes or no.")
     if response.lower() == 'yes':
         pkcs_password = True
     elif response.lower() == 'no':

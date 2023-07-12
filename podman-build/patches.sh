@@ -244,7 +244,6 @@ EOF
 print_ascii_art "$ascii_art"
 
 
-
 # Function: ask_yes_no
 #
 # Description: This function prompts the user with a yes/no question, validates the input,
@@ -1339,7 +1338,7 @@ EOF
   #   Patches Client Certificate Directory: ${TOP_DIR}/${CERT_DIRECTORY}
   #
   # Next Steps:
-  #   Next you need to set up client certificates so you can access patches!
+  #   Next you need to set up client certificates so you can access Patches!
   #
   #   1. Grab your client certs (.p12) from ${CERT_DIRECTORY} and download them to
   #      your local computer.
@@ -1858,7 +1857,7 @@ case $1 in
     patches_echo "Stopping and removing the DRM container..."
     podman rm -f -t 0 patches-drm
     patches_echo "New patches pulled!"
-
+ 
     ;;
 
   build)
