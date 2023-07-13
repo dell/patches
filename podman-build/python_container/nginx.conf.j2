@@ -34,8 +34,8 @@ http {
         access_log /var/log/nginx/access.log custom;
 
         # Client-facing certificate and key
-        ssl_certificate {{ server_cert }};
-        ssl_certificate_key {{ server_key }};
+        ssl_certificate "{{ server_cert }}";
+        ssl_certificate_key "{{ server_key }}";
 
         {% if disable_client_cert_auth %}
         {% if disable_client_cert_request %}
@@ -44,10 +44,12 @@ http {
         {% else %}
         # Request client certificates but skip verification
         ssl_verify_client optional_no_ca;
+        ssl_client_certificate "{{ root_cert_path }}";
         {% endif %}
         {% else %}
         # Request client certificates and perform verification
         ssl_verify_client on;
+        ssl_client_certificate "{{ root_cert_path }}";
         {% endif %}
 
         {% if internal_cert and internal_key %}
@@ -66,8 +68,8 @@ http {
             proxy_set_header Host $http_host;
 
             {% if internal_cert and internal_key %}
-            proxy_ssl_certificate {{ internal_cert }};
-            proxy_ssl_certificate_key {{ internal_key }};
+            proxy_ssl_certificate "{{ internal_cert }}";
+            proxy_ssl_certificate_key "{{ internal_key }}";
             proxy_ssl_verify on;
             {% endif %}
 
@@ -80,8 +82,8 @@ http {
             proxy_set_header Host $http_host;
 
             {% if internal_cert and internal_key %}
-            proxy_ssl_certificate {{ internal_cert }};
-            proxy_ssl_certificate_key {{ internal_key }};
+            proxy_ssl_certificate "{{ internal_cert }}";
+            proxy_ssl_certificate_key "{{ internal_key }}";
             proxy_ssl_verify on;
             {% endif %}
 

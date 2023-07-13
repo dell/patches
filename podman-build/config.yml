@@ -17,6 +17,7 @@
 ROOT_CA_NAME: "rootCA"
 
 # The name you want to use for the certificate/CN for the patches server. This becomes <SERVER_NAME>.<DOMAIN>
+# This cannot have any spaces.
 SERVER_NAME: "patches"
 
 # The domain name to use for the certificate
@@ -44,7 +45,7 @@ days: 1095
 # Make sure one of these is the same as PATCHES_ADMINISTRATOR if you are not using your
 # own certificates.
 clients:
-  gelante: # CHANGE THIS TO YOUR CLIENT NAME
+  gelante: # CHANGE THIS TO YOUR CLIENT NAME - SPACES ARE NOT SUPPORTED
 
     # The domain name to use for the certificate
     domain: "lan"
@@ -79,7 +80,7 @@ clients:
     # How many days the certs should be valid. Default is three years.
     days: 1095
 
-  geleisi: # CHANGE THIS TO YOUR CLIENT NAME
+  geleisi: # CHANGE THIS TO YOUR CLIENT NAME - SPACES ARE NOT SUPPORTED
 
     # The domain name to use for the certificate
     domain: "lan"

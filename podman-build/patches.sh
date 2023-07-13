@@ -1768,6 +1768,12 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# Make sure there are no spaces in SERVER_NAME
+if [[ $SERVER_NAME == *" "* ]]; then
+    patches_echo "Error: SERVER_NAME cannot contain spaces." --error
+    exit 1
+fi
+
 # Make sure there is no overlap in any of the certificate names as this will cause failures.
 # This lesson was learned over the course of an hour on a Saturday and I am sad.
 if [[ "$ROOT_CA_NAME" == "$SERVER_NAME" || "$ROOT_CA_NAME" == "$BACKEND_CERT_NAME" || "$ROOT_CA_NAME" == "$FRONTEND_CERT_NAME" || "$SERVER_NAME" == "$BACKEND_CERT_NAME" || "$SERVER_NAME" == "$FRONTEND_CERT_NAME" || "$BACKEND_CERT_NAME" == "$FRONTEND_CERT_NAME" ]]; then
@@ -2060,7 +2066,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v1.2.0-beta"
+    patches_echo "The current version is v1.2.1-beta"
 
     ;;
 
