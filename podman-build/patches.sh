@@ -827,7 +827,10 @@ function run_patches_services() {
     # But instead go to /home/node/app. This is because we are overwriting the files
     # and putting them in the home directory. If you go to server you will get
     # the base code instead of the code you are editing on the filesystem.
-    podman rm -f patches-backend &&
+    TOP_DIR=./
+    SCRIPT_DIR=./podman-build/
+    CERT_DIRECTORY=./server_certs/
+    podman rm -f -t 0 patches-backend && \
     podman run \
         --name patches-backend \
         --env-file ${TOP_DIR}/.patches-backend \
@@ -1145,6 +1148,21 @@ function patches_setup() {
   # Delete any old containers still running on the server
   cleanup_containers
 
+  # Ask the user if they want to disable client certificate authentication
+  if ask_yes_no "Do you want to disable client certificate authentication? Disabling client certificate authentication will make it so that users will not be rejected website entry if they do not provide a valid certificate. Note: **You will still need certificates for the admin panel.**"; then
+    DISABLE_CLIENT_CERT_AUTH=true
+  else
+    DISABLE_CLIENT_CERT_AUTH=false
+  fi
+
+  # Ask the user if they want to disable client certificate requests
+  if ask_yes_no "Do you want to disable client certificate requests? Disabling this means that users will not be prompted at all for a certificate when they visit the website. Only disabling client certificate authentication in the previous step means that users do not have to provide a valid certificate but they will still be prompted for a certificate of some type and that certificate will be logged. This setting effectively disables certificates completely. Users will not be prompted to provide one and this will also disable client certificate authentication. Note: **You will still need certificates for the admin panel.**"; then
+    DISABLE_CLIENT_CERT_REQUEST=true
+    DISABLE_CLIENT_CERT_AUTH=true
+  else
+    DISABLE_CLIENT_CERT_REQUEST=false 
+  fi
+
   # TODO - See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
 
   # Setup environment variables for the patches backend
@@ -1161,6 +1179,8 @@ function patches_setup() {
   echo "PARSED_PATH=/patches/xml/parsed" >> "${TOP_DIR}/.patches-backend"
   echo "REPO_PATH=/patches/xml/" >> "${TOP_DIR}/.patches-backend"
   echo "SSL_ON=0" >> "${TOP_DIR}/.patches-backend" # This is for the connection to postgresql internally
+  echo "DISABLE_CLIENT_CERT_AUTH=${DISABLE_CLIENT_CERT_AUTH}" >> "${TOP_DIR}/.patches-backend"
+  echo "DISABLE_CLIENT_CERT_REQUEST=${DISABLE_CLIENT_CERT_REQUEST}" >> "${TOP_DIR}/.patches-backend"
   source ${TOP_DIR}/.patches-backend
 
   # Setup the environment variables for the postgres container
@@ -1214,6 +1234,8 @@ function patches_setup() {
   echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
   echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
+  echo "DISABLE_CLIENT_CERT_AUTH=${DISABLE_CLIENT_CERT_AUTH}" >> ${TOP_DIR}/.patches-nginx
+  echo "DISABLE_CLIENT_CERT_REQUEST=${DISABLE_CLIENT_CERT_REQUEST}" >> ${TOP_DIR}/.patches-nginx
 
   # Before continuing we need to make sure that all the build containers are present
   check_images
@@ -1251,7 +1273,7 @@ function patches_setup() {
         missing_files+=("${SERVER_PEM}")
       fi
       missing_files_list=$(IFS=", "; echo "${missing_files[*]}")
-      if ! ask_yes_no "Error: The following PEM files specified in the variables ROOT_CA_PEM or SERVER_PEM do not exist: ${missing_files_list}. Do you want to generate new certificates instead? Type no to terminate patches. You can import existing certificates with \`bash ${SCRIPT_DIR}/patches.sh import-keys <args>\`" --error; then
+      if ! ask_yes_no "Error: The following PEM files specified in the variables ROOT_CA_PEM or SERVER_PEM do not exist:\n\n ${missing_files_list}\n\nDo you want to generate new certificates instead? Type no to terminate patches. You can import existing certificates with \`bash ${SCRIPT_DIR}/patches.sh import-keys <args>\`" --error; then
         patches_echo "Terminating." --error
         exit 1
       else
@@ -1270,6 +1292,8 @@ function patches_setup() {
   run_postgresql
 
   run_patches_services
+
+  sleep 5
 
   run_nginx
 
@@ -1332,28 +1356,28 @@ EOF
 
   # Print Setup Summary with random color codes
   echo -e "\e[$(get_random_color)m################################################################################
-  # Setup Summary:
-  #   Patches Administrator Name: ${PATCHES_ADMINISTRATOR}
-  #   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${DOMAIN}
-  #   Patches Client Certificate Directory: ${TOP_DIR}/${CERT_DIRECTORY}
-  #
-  # Next Steps:
-  #   Next you need to set up client certificates so you can access Patches!
-  #
-  #   1. Grab your client certs (.p12) from ${CERT_DIRECTORY} and download them to
-  #      your local computer.
-  #   2. Follow the instructions at https://github.com/dell/patches#setting-up-certs
-  #   3. Don't forget after you import them to restart your browser!
-  #   4. Add ${SERVER_NAME}.${DOMAIN} to your DNS server
-  #
-  # Helpful Tips:
-  #   - If you need to add an admin use ${SCRIPT_DIR}/patches.sh add-admin <admin_common_name>
-  #   - If you are using OpenManage Enterprise, check out: 
-  #     https://github.com/dell/patches#openmanage-enterprise-ome
-  #   - Run \`${SCRIPT_DIR}/patches.sh -h\` for help
-  #   - If you want to pull new patches run \`${SCRIPT_DIR}/patches.sh pull-patches\`
-  ################################################################################
-  \e[0m"
+# Setup Summary:
+#   Patches Administrator Name: ${PATCHES_ADMINISTRATOR}
+#   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${DOMAIN}
+#   Patches Client Certificate Directory: ${TOP_DIR}/${CERT_DIRECTORY}
+#
+# Next Steps:
+#   Next you need to set up client certificates so you can access Patches!
+#
+#   1. Grab your client certs (.p12) from ${CERT_DIRECTORY} and download them to
+#      your local computer.
+#   2. Follow the instructions at https://github.com/dell/patches#setting-up-certs
+#   3. Don't forget after you import them to restart your browser!
+#   4. Add ${SERVER_NAME}.${DOMAIN} to your DNS server
+#
+# Helpful Tips:
+#   - If you need to add an admin use ${SCRIPT_DIR}/patches.sh add-admin <admin_common_name>
+#   - If you are using OpenManage Enterprise, check out: 
+#     https://github.com/dell/patches#openmanage-enterprise-ome
+#   - Run \`${SCRIPT_DIR}/patches.sh -h\` for help
+#   - If you want to pull new patches run \`${SCRIPT_DIR}/patches.sh pull-patches\`
+################################################################################
+\e[0m"
 }
 
 # import_keys is responsible for importing certificates and keys for Patches
@@ -1708,6 +1732,8 @@ while [[ $# -gt 0 ]]; do
       echo -e "${COMMAND_COLOR}  install-service${EXPLANATION_COLOR} Install the Patches service so it will start on startup. (requires sudo)"
       echo -e "${COMMAND_COLOR}  import-repository${EXPLANATION_COLOR} Imports an existing repository into Patches"
       echo -e "${COMMAND_COLOR}  import-keys${EXPLANATION_COLOR} Import existing keys for use with Patches. It accepts one of two argument styles."
+      echo -e "${COMMAND_COLOR}  restart-nginx${EXPLANATION_COLOR} Restarts nginx only. This can be necessary if patches-backend changes IP."
+      echo -e "${COMMAND_COLOR}  version${EXPLANATION_COLOR} Prints the Patches version."
       echo -e "${EXPLANATION_COLOR}              The first expects two arguments, the first is the file path to a root CA's public key"
       echo -e "${EXPLANATION_COLOR}              (and optionally private key) in PEM format. The second is the file path to the Patches"
       echo -e "${EXPLANATION_COLOR}              server public and private key combined in PEM format. WARNING: This command will fail"
@@ -2022,6 +2048,19 @@ logs)
         exit 0
       fi
     fi
+
+    ;;
+
+  restart-nginx)
+
+    podman rm -f -t 0 patches-nginx
+    run_nginx
+
+    ;;
+
+  version)
+
+    patches_echo "The current version is v1.2.0-beta"
 
     ;;
 

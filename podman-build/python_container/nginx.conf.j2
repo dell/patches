@@ -36,10 +36,19 @@ http {
         # Client-facing certificate and key
         ssl_certificate {{ server_cert }};
         ssl_certificate_key {{ server_key }};
-        
-        # Request client certificates
-        ssl_client_certificate {{ root_cert_path }};
+
+        {% if disable_client_cert_auth %}
+        {% if disable_client_cert_request %}
+        # Disable client certificate request and verification
+        ssl_verify_client off;
+        {% else %}
+        # Request client certificates but skip verification
+        ssl_verify_client optional_no_ca;
+        {% endif %}
+        {% else %}
+        # Request client certificates and perform verification
         ssl_verify_client on;
+        {% endif %}
 
         {% if internal_cert and internal_key %}
         # The below code blocks define the behavior for when we hit /api or
@@ -64,8 +73,7 @@ http {
 
             # Set X-SSL-CERT header with client certificate
             proxy_set_header X-SSL-CERT $ssl_client_escaped_cert;
-
-            proxy_pass https://patches-backend:{{ backend_port }};
+            proxy_pass "https://patches-backend:{{ backend_port }}";
         }
 
         location / {

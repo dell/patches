@@ -20,7 +20,8 @@ parser = argparse.ArgumentParser(description='Generates an Nginx configuration f
 parser.add_argument('--server-name', required=True, help='The domain name of the server (just the name)')
 parser.add_argument('--domain', required=True, help='The top-level domain of the server')
 parser.add_argument('--ipv4-address', required=True, help='The IPv4 address of the server')
-parser.add_argument('--nginx-config-dir', required=True, help='The directory in which to write the resulting Nginx configuration file')
+parser.add_argument('--nginx-config-dir', required=True, help='The directory in which to write the resulting Nginx '
+                                                              'configuration file')
 parser.add_argument('--server-cert', required=True, help='Name of the server certificate file')
 parser.add_argument('--server-key', required=True, help='Name of the server private key file')
 parser.add_argument('--server-ca', required=True, help='Name of the server CA certificate file')
@@ -29,6 +30,14 @@ parser.add_argument('--root-cert-path', required=True, help='The path to the roo
 parser.add_argument('--cert-dir', required=True, help='Directory containing client certificates')
 parser.add_argument('--frontend-port', required=True, type=int, help='Port number for the ReactJS frontend')
 parser.add_argument('--backend-port', required=True, type=int, help='Port number for the NodeJS backend')
+parser.add_argument('--disable-client-cert-auth', action='store_true',
+                    help='Turns off client certificate authentication to use Patches. '
+                         'The certificate is still required for the admin page.')
+
+parser.add_argument('--disable-client-cert-request', action='store_true',
+                    help='Turns off requests for client certificates. This will stop Patches '
+                         'from prompting users for a certificate when they come to the website. '
+                         'This will also disable client certificate authentication.')
 
 # Parse arguments
 args = parser.parse_args()
@@ -45,6 +54,8 @@ root_cert_path = args.root_cert_path
 cert_dir = args.cert_dir
 frontend_port = args.frontend_port
 backend_port = args.backend_port
+disable_client_cert_auth = args.disable_client_cert_auth
+disable_client_cert_request = args.disable_client_cert_request
 
 # Load Jinja2 template
 env = Environment(loader=FileSystemLoader('.'))
@@ -62,6 +73,8 @@ config = template.render(
     cert_dir=cert_dir,
     frontend_port=frontend_port,
     backend_port=backend_port,
+    disable_client_cert_auth=disable_client_cert_auth,
+    disable_client_cert_request=disable_client_cert_request
 )
 
 # Write rendered template to file

@@ -4,7 +4,7 @@ Listed here are all things which will require routine maintenance and updates.
 
 ## Before Each Release
 
-- The version in [bootstrap.sh](./bootstrap.sh) must be updated
+- The version in [bootstrap.sh](./bootstrap.sh) and in the version command of [patches.sh](./podman-build/patches.sh) must be updated
 
 ## Required Version Updates
 

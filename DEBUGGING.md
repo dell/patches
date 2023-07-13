@@ -2,6 +2,8 @@
 
 - [Debugging](#debugging)
   - [Debugging with VSCode](#debugging-with-vscode)
+  - [Helpful Commands](#helpful-commands)
+    - [Determine Which Container Has Target IP](#determine-which-container-has-target-ip)
   - [Helpful Database Commands](#helpful-database-commands)
     - [Dump the Database Schema](#dump-the-database-schema)
     - [List the Databases Available](#list-the-databases-available)
@@ -40,6 +42,14 @@
    2. TODO - make a note about using the `debug` command in javascript 
 
 I have also noticed that in order for breakpoints to trigger I sometimes have to detach the debugger in vscode, kill the program, and rerun.
+
+## Helpful Commands
+
+### Determine Which Container Has Target IP
+
+```bash
+podman inspect -f '{{.Name}}' $(podman ps -a -q --format='{{.ID}}') | xargs -I {} sh -c 'podman inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" {} | grep -w 10.89.0.111 && echo Container: {}'
+```
 
 ## Helpful Database Commands
 

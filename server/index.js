@@ -128,14 +128,19 @@ app.use(bodyParser.json());
 
 /**
  * clientAuthMiddleware checks inbound requests and validates that the client
- * request is using a certificate signed by the CA Patches is using
- * @param {*} params Takes the standard request, response, and next web 
- * paraameters as input.
- * @returns {*} If the certificate check passes it sends the request to the next
- * handler in the chain otherwise it returns a 401 error.
+ * request is using a certificate signed by the CA Patches is using.
+ * If the DISABLE_CLIENT_CERT_AUTH environment variable is true,
+ * it sets default user values and proceeds to the next handler.
+ * Otherwise, it validates the client certificate and populates req.user
+ * with the certificate details.
+ *
+ * @returns {Function} Middleware function to handle client certificate authentication.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ * @param {Function} next - The next function in the middleware chain.
+ * @throws {Error} If the client certificate is invalid.
  */
 const clientAuthMiddleware = () => (req, res, next) => {
-
   // Extract the client certificate from the X-SSL-CERT header
   const cert = req.headers['x-ssl-cert'];
 
@@ -152,12 +157,24 @@ const clientAuthMiddleware = () => (req, res, next) => {
     };
 
     return next();
+  } else if (process.env.DISABLE_CLIENT_CERT_AUTH === 'true') {
+    // Set req.user with default values
+    req.user = {
+      subject: 'Unknown User',
+      issuer: 'unknown',
+      organizational_unit: 'unknown',
+      organization: 'unknown',
+      country: 'unknown',
+    };
+
+    return next();
   } else {
     return res
       .status(401)
-      .send({ error: `Sorry, but you need to provide a client certificate to continue.` });
+      .send({ error: 'Sorry, but you need to provide a client certificate to continue.' });
   }
 };
+
 
 /**
  * Parses a BASE64 encoded certificate and returns the parsed certificate object.
