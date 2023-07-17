@@ -93,7 +93,16 @@ patches_echo "Creating the repository using catalog ID ${catalog_id}..."
 
 # Configure DRM deployment type and location
 patches_echo "Downloading the entire PowerEdge catalog (~30-35GBs) this will take a long time..."
-/opt/dell/dellrepositorymanager/drm.sh --deployment-type=share --location="/patches/drm_export/${catalog_name}" --repository=patches
+
+download_output=$(/opt/dell/dellrepositorymanager/drm.sh --deployment-type=share --location="/patches/drm_export/${catalog_name}" --repository=patches 2>&1)
+
+if [[ $download_output == *"Failed"* ]]; then
+  patches_echo "Failed to create repository and download the catalog." --error
+  patches_echo "drm.sh returned: ${download_output}" --error
+  exit 1
+else
+  patches_echo "Repository creation and download completed successfully."
+fi
 
 # Wait for the export to finish. The command above will finish before the job is really done. This waits for the export
 # to fully finish by looking for the appropriate catalog name. If this takes more than 30 minutes it will terminate
