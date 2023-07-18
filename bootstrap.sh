@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the version to be downloaded
-VERSION="v1.2.1-beta"
+VERSION="v1.2.2-beta"
 
 # Check if the script is being run as root
 if [[ $EUID -ne 0 ]]; then
@@ -216,7 +216,7 @@ check_user_namespace() {
   if ! grep -E "^${SUDO_USER}:[[:digit:]]+:[[:digit:]]+" /etc/subuid; then
     if ask_yes_no "Error: Setuid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Enabling this will allow user namespaces to work and keep all our containers running as user only. Do you want to remediate automatically?"; then
       echo "Configuring setuid..."
-      sudo usermod --add-subuids 200000-201000 --add-subgids 200000-201000 "${SUDO_USER}"
+      sudo usermod --add-subuids 100000-200000 --add-subgids 100000-200000 "${SUDO_USER}"
     else
       patches_echo "Terminating Patches bootstrap. Installation cannot continue." --error
       exit 1
@@ -229,7 +229,7 @@ check_user_namespace() {
   if ! grep -E "^${SUDO_USER}:[[:digit:]]+:[[:digit:]]+" /etc/subgid; then
     if ask_yes_no "Error: Setgid is not configured for the user. This usually happens when STIGs are applied or on older versions of Arch. Enabling this will allow user namespaces to work and keep all our containers running as user only. Do you want to remediate automatically?"; then
       echo "Configuring setgid..."
-      sudo usermod --add-subuids 200000-201000 --add-subgids 200000-201000 "${SUDO_USER}"
+      sudo usermod --add-subuids 100000-200000 --add-subgids 100000-200000 "${SUDO_USER}"
     else
       patches_echo "Terminating Patches bootstrap. Installation cannot continue." --error
       exit 1

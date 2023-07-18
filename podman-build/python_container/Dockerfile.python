@@ -10,7 +10,7 @@
 # TODO - Need to make these versions paramaters. See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634868
 
 # Build stage
-FROM python:3.12.0a7-slim-bullseye AS builder
+FROM python:3.12.0b4-slim-bookworm AS builder
 
 ARG PYTHON_CONTAINER_DIR
 
@@ -18,14 +18,14 @@ WORKDIR /app
 
 # Install build essentials for compiling C code
 RUN apt-get update && apt-get install -y build-essential libffi-dev
+RUN pip install --upgrade pip
 
 # Copy files to the working directory
 COPY ${PYTHON_CONTAINER_DIR}/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir jinja2
 
 # Production stage
-FROM python:3.12.0a7-slim-bullseye
+FROM python:3.12.0b4-slim-bookworm
 
 ARG PYTHON_CONTAINER_DIR
 
