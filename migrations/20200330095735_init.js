@@ -34,31 +34,42 @@ exports.up = async (knex) => {
       table.timestamps(undefined, true)
     }),
     knex.schema.createTable('roles', function (table) {
-      table.increments()
-      table.string('title')
-      table.timestamps(undefined, true)
-    }),
+      // Use integer type for the ID column.
+      table.integer('id').primary();
+    
+      // Add the title column for the role name.
+      table.string('title');
+    
+      // Add timestamps for "created_at" and "updated_at".
+      table.timestamps(undefined, true);
+    }),    
+    knex("roles").insert([
+      { id: 1, title: "admin" },
+      { id: 2, title: "user" },      
+    ]),
+    // Create the "user_roles" table with the specified schema using knex.
     knex.schema.createTable('user_roles', function (table) {
-      table.increments()
-      table
-        .string('username')
-        .notNullable()
-        .references('name')
-        .inTable('users')
-        .onDelete('CASCADE')
-      table
-        .integer('role_id')
-        .notNullable()
-        .references('id')
-        .inTable('roles')
-        .onDelete('CASCADE')
-      table
-        .string('updating_user')
-        .notNullable()
-        .references('name')
-        .inTable('users')
-        .onDelete('CASCADE')
-      table.timestamps(undefined, true)
+      // Primary key for the "user_roles" table, automatically increments with each new record.
+      table.increments();
+
+      // The username field that stores the name of the user associated with this role.
+      // It must not be nullable and references the "name" field in the "users" table.
+      // When the referenced user is deleted, all associated user_roles records are deleted (CASCADE).
+      table.string('username').notNullable().references('name').inTable('users').onDelete('CASCADE');
+
+      // The role_id field that stores the ID of the role associated with this user.
+      // It must not be nullable and references the "id" field in the "roles" table.
+      // When the referenced role is deleted, all associated user_roles records are deleted (CASCADE).
+      table.integer('role_id').notNullable().references('id').inTable('roles').onDelete('CASCADE');
+
+      // The updating_user field that stores the name of the user who is updating this user's role.
+      // It must not be nullable and references the "name" field in the "users" table.
+      // When the referenced user is deleted, all associated user_roles records are deleted (CASCADE).
+      table.string('updating_user').notNullable().references('name').inTable('users').onDelete('CASCADE');
+
+      // Automatically adds timestamps for "created_at" and "updated_at" columns.
+      // The default value is the current timestamp when a record is inserted/updated.
+      table.timestamps(undefined, true);
     }),
     knex.schema.createTable('systems', function (table) {
       table.string('system_id').notNullable().primary()

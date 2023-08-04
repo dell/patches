@@ -362,12 +362,11 @@ configure_administrator() {
 
   # Execute the SQL script using the connection URL
   echo "-- SQL script for setting up admin user
-        \set admin_user '${1}'
-        INSERT INTO roles (title) VALUES ('admin');
-        INSERT INTO roles (title) VALUES ('user');
-        INSERT INTO users (name) VALUES (:'admin_user');
-        INSERT INTO user_roles (username, role_id, updating_user) VALUES (:'admin_user', 1, 'System');
-        " | podman exec -i "patches-psql" psql "${connection_url}"
+      INSERT INTO users (name) VALUES ('${1}');
+
+      INSERT INTO user_roles (username, role_id, updating_user)
+      SELECT '${1}', 1, 'System' FROM users WHERE name = '${1}';
+      " | podman exec -i "patches-psql" psql "${connection_url}"
 
   patches_echo "${1} added as a Patches administrator."
 }
