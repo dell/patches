@@ -801,7 +801,6 @@ function run_postgresql() {
 #   None
 #
 # Environment variables:
-#   DEBUG: If "TRUE", the patches-backend/frontend is run in debug mode. Otherwise, it is run in production mode
 #   TOP_DIR: Path to the top-level directory
 #   CERT_DIRECTORY: Path to the certificate directory
 #   FRONTEND_PORT: Port number for the patches-frontend application
@@ -810,96 +809,32 @@ function run_postgresql() {
 #   None
 function run_patches_services() {
 
-  if [[ "${DEBUG}" == "TRUE" ]]; then
+  # Set NODE_ENV to production for production mode
+  echo "NODE_ENV=production" >> ${TOP_DIR}/.patches-backend
+  echo "Running patches-backend in production mode"
 
-    patches_echo "Running patches-backend in debug mode"
+  # Start podman in production mode
+  podman run \
+    --name patches-backend \
+    --env-file ${TOP_DIR}/.patches-backend \
+    --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
+    --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
+    --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
+    --network host-bridge-net \
+    --detach \
+    localhost/dell/patches-base:latest \
+    sh -c 'node /home/node/app/node_modules/knex/bin/cli.js --knexfile /home/node/app/server/knexfile.js migrate:latest && node /home/node/app/server/index.js'
 
-    # Set NODE_ENV to development for debug mode
-    echo "NODE_ENV=development" >> ${TOP_DIR}/.patches-backend
+  patches_echo "Running patches-frontend"
+  echo "NODE_ENV=production" >> ${TOP_DIR}/.patches-frontend
 
-    patches_echo "Running debug code. You will need to attach a debugger on port 9229 to receive the debug hooks.."  
-
-    # Start podman in debug mode. Port 9229 is used for debugging
-    # DEVELOPER NOTE: Notice that here we do two things differently:
-    # 1. All of the files are mounted into the container instead of being baked in.
-    # This prevents you from having to rebuild the container on each run of development
-    # 2. Notice that unlike in production the calls are not made to /home/node/app/server
-    # But instead go to /home/node/app. This is because we are overwriting the files
-    # and putting them in the home directory. If you go to server you will get
-    # the base code instead of the code you are editing on the filesystem.
-    TOP_DIR=./
-    SCRIPT_DIR=./podman-build/
-    CERT_DIRECTORY=./server_certs/
-    podman rm -f -t 0 patches-backend && \
-    podman run \
-        --name patches-backend \
-        --env-file ${TOP_DIR}/.patches-backend \
-        --volume ${TOP_DIR}/server/data:/home/node/app/data:Z \
-        --volume ${TOP_DIR}/server/routes:/home/node/app/server/routes:Z \
-        --volume ${TOP_DIR}/server/db.js:/home/node/app/server/db.js:Z \
-        --volume ${TOP_DIR}/server/index.js:/home/node/app/index.js:Z \
-        --volume ${TOP_DIR}/server/knexfile.js:/home/node/app/server/knexfile.js:Z \
-        --volume ${TOP_DIR}/server/rebuild_database.js:/home/node/app/server/rebuild_database.js:Z \
-        --volume ${TOP_DIR}/server/util.js:/home/node/app/server/util.js:Z \
-        --volume ${TOP_DIR}/server/seeds/:/home/node/app/server/seeds:Z \
-        --volume ${TOP_DIR}/package.json:/home/node/app/package.json:Z \
-        --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:z \
-        --volume ${SCRIPT_DIR}/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:Z \
-        --volume ${TOP_DIR}/migrations:/home/node/app/migrations:Z \
-        --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
-        --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
-        --publish "9229:9229" \
-        --network host-bridge-net \
-        -it \
-        localhost/dell/patches-base:latest \
-        /bin/bash
-
-      # These are the three commands that need to run. You cannot debug them all
-      # at once or at least I haven't found a way. I have to do them one by one
-      # node --inspect-brk=0.0.0.0:9229 /home/node/app/node_modules/knex/bin/cli.js migrate:latest
-      # node --inspect-brk=0.0.0.0:9229 server/index.js --knexfile /home/node/app/server/knexfile.js
-      # If you want to rollback use /home/node/app/node_modules/knex/bin/cli.js migrate:rollback --knexfile /home/node/app/server/knexfile.js
-      # All three combined:
-      # /home/node/app/node_modules/knex/bin/cli.js migrate:rollback --knexfile /home/node/app/server/knexfile.js && node /home/node/app/node_modules/knex/bin/cli.js migrate:latest --knexfile /home/node/app/server/knexfile.js && node --inspect-brk=0.0.0.0:9229 server/index.js
-
-      podman run \
-        --name patches-frontend \
-        --env-file ${TOP_DIR}/.patches-frontend \
-        --network host-bridge-net \
-        --publish "${FRONTEND_PORT}:${FRONTEND_PORT}" \
-        --detach \
-        localhost/dell/patches-base:latest \
-        sh -c '/home/node/app/node_modules/.bin/serve --listen tcp://0.0.0.0:3000 /home/node/app/build'
-  else
-
-    # Set NODE_ENV to production for production mode
-    echo "NODE_ENV=production" >> ${TOP_DIR}/.patches-backend
-    echo "Running patches-backend in production mode"
-
-    # Start podman in production mode
-    podman run \
-      --name patches-backend \
-      --env-file ${TOP_DIR}/.patches-backend \
-      --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
-      --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
-      --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
-      --network host-bridge-net \
-      --detach \
-      localhost/dell/patches-base:latest \
-      sh -c 'node /home/node/app/node_modules/knex/bin/cli.js --knexfile /home/node/app/server/knexfile.js migrate:latest && node /home/node/app/server/index.js'
-
-    patches_echo "Running patches-frontend"
-    echo "NODE_ENV=production" >> ${TOP_DIR}/.patches-frontend
-
-    podman run \
-      --name patches-frontend \
-      --env-file ${TOP_DIR}/.patches-frontend \
-      --network host-bridge-net \
-      --detach \
-      localhost/dell/patches-base:latest \
-      sh -c "/home/node/app/node_modules/.bin/serve --listen tcp://0.0.0.0:${FRONTEND_PORT} /home/node/app/build"
-
-  fi
+  podman run \
+    --name patches-frontend \
+    --env-file ${TOP_DIR}/.patches-frontend \
+    --network host-bridge-net \
+    --detach \
+    localhost/dell/patches-base:latest \
+    sh -c "/home/node/app/node_modules/.bin/serve --listen tcp://0.0.0.0:${FRONTEND_PORT} /home/node/app/build"
 
 }
 
@@ -1168,7 +1103,6 @@ function patches_setup() {
   # Setup environment variables for the patches backend
   > ${TOP_DIR}/.patches-backend
   echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
-  echo "DEBUG=$DEBUG" >> ${TOP_DIR}/.patches-backend
   echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
   echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
   echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
@@ -1695,7 +1629,6 @@ eval "$(parse_yaml "${SCRIPT_DIR}/config.yml")"
 opts=$(getopt \
   -n $(basename "$0") \
   -o h \
-  --longoptions "debug" \
   --longoptions "continuous" \
   --longoptions "container:" \
   -- "$@")
@@ -1714,7 +1647,7 @@ eval set -- "$opts"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h)
-      echo -e "Usage:  $(basename "$0") (command) [--debug|--continuous|--container]"
+      echo -e "Usage:  $(basename "$0") (command) [--continuous|--container]"
       echo
       echo -e "Args:"
       echo -e "${COMMAND_COLOR}  rm${EXPLANATION_COLOR}         Deletes all Patches containers, container images, and volumes."
@@ -1742,16 +1675,11 @@ while [[ $# -gt 0 ]]; do
       echo -e "${EXPLANATION_COLOR}              The PKCS#12 file *can* contain a password."
       echo
       echo -e "Flags:"
-      echo -e "${COMMAND_COLOR}  --debug${EXPLANATION_COLOR}      Runs the application in debug mode. Can only be used with the setup command."
-      echo -e "${EXPLANATION_COLOR}               This is meant for developer use."
       echo -e "${COMMAND_COLOR}  --continuous${EXPLANATION_COLOR}  Runs the 'start' command continuously, retrying failed services. This is primarily"
       echo -e "${EXPLANATION_COLOR}               meant for developer use"
       echo -e "${COMMAND_COLOR}  --container${EXPLANATION_COLOR}   Specifies the name of a specific container to build (optional)"
       echo
       exit 0
-      ;;
-    --debug)
-      DEBUG="TRUE"
       ;;
     --continuous)
       CONTINUOUS="TRUE"
