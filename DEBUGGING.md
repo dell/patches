@@ -71,7 +71,7 @@ podman run \
   --volume ${TOP_DIR}/server/data:/home/node/app/data:Z \
   --volume ${TOP_DIR}/server/routes:/home/node/app/server/routes:Z \
   --volume ${TOP_DIR}/server/db.js:/home/node/app/server/db.js:Z \
-  --volume ${TOP_DIR}/server/index.js:/home/node/app/index.js:Z \
+  --volume ${TOP_DIR}/server/index.js:/home/node/app/server/index.js:Z \
   --volume ${TOP_DIR}/server/knexfile.js:/home/node/app/server/knexfile.js:Z \
   --volume ${TOP_DIR}/server/rebuild_database.js:/home/node/app/server/rebuild_database.js:Z \
   --volume ${TOP_DIR}/server/util.js:/home/node/app/server/util.js:Z \

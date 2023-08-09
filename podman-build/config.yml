@@ -13,15 +13,12 @@
 ################################################################################
 
 # The name you want to use for your root CA. If you want to use an existing root CA, you can use the same name.
-# This name will be parsed into ROOT_CA_NAME.crt and ROOT_CA_NAME.key. Ex rootCA.crt and rootCA.key.
 ROOT_CA_NAME: "rootCA"
+ROOT_CA_DOMAIN: "lan"
 
-# The name you want to use for the certificate/CN for the patches server. This becomes <SERVER_NAME>.<DOMAIN>
-# This cannot have any spaces.
+# The name you want to use for the certificate/CN for the Patches server. This cannot have any spaces.
 SERVER_NAME: "patches"
-
-# The domain name to use for the certificate
-DOMAIN: "lan"
+SERVER_DOMAIN: "lan"
 
 # The country name for the certificate
 country: "US"

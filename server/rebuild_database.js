@@ -273,24 +273,37 @@ module.exports.rebuildDatabase = async (currentXMLFile, redirectFlag) => {
 };
 
 /**
- * TODO
- * @param {*} file 
- * @returns 
+ * Determines if the provided file is a repository folder.
+ * A repository folder is identified by containing at least one XML file.
+ * 
+ * @param {*} file - The file object to be checked.
+ * @returns {boolean} True if the file is a repository folder, otherwise false.
  */
 function returnRepoFolder(file) {
+  // Check if the file is a directory.
   if (file.isDirectory()) {
+    // Construct the full path to the potential repository folder.
     let repoPath = path.join(repo_path, file.name);
+    
+    // Filter the contents of the directory to find XML files.
     let repoFolder = fs
       .readdirSync(repoPath, { withFileTypes: true })
       .filter((file) => path.extname(file.name) === ".xml")
-      .find((e) => true);
+      .find((e) => true); // It's unclear what the intention is with this find condition.
+
+    // Return true if at least one XML file was found in the directory, indicating it's a repository folder.
     return repoFolder;
+  } else {
+    // If the file is not a directory, return false.
+    return false;
   }
 }
 
 /**
- * TODO
- * @returns 
+ * Traverses the repository path and returns an array of repository folders.
+ * Repository folders are determined based on a filtering function.
+ * 
+ * @returns {Array} An array of repository folders.
  */
 module.exports.traverseXML = () => {
   let repoFolders = fs

@@ -14,6 +14,7 @@ const {
 } = require("./rebuild_database");
 const https = require("https");
 const fs = require("fs");
+const selfsigned = require('selfsigned');
 knex = require("./db");
 
 if (!process.env.PORT) {
@@ -28,12 +29,36 @@ if (!process.env.DATABASE_URL) {
   throw new Error("Missing environment variable: DATABASE_URL");
 }
 
-if (!process.env.SERVER_CERT) {
-  throw new Error("Missing environment variable: SERVER_CERT");
+if ((process.env.SERVER_CERT && !process.env.SERVER_KEY) || (!process.env.SERVER_CERT && process.env.SERVER_KEY)) {
+  throw new Error("SERVER_CERT and SERVER_KEY environment variables must be either both defined or both undefined.");
 }
 
-if (!process.env.SERVER_KEY) {
-  throw new Error("Missing environment variable: SERVER_KEY");
+if (!process.env.SERVER_CERT || !process.env.SERVER_KEY) {
+  console.warn("SERVER_CERT or SERVER_KEY environment variable is missing. Generating self-signed certificate and key...");
+
+  const keyPath = path.join(__dirname, 'private-key.key');
+  const certPath = path.join(__dirname, 'certificate.crt');
+
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    const attrs = [{ name: 'commonName', value: 'patches.lan' }];
+    const pems = selfsigned.generate(attrs, { days: 365 });
+
+    fs.writeFileSync(keyPath, pems.private);
+    console.info('Private key generated.');
+
+    fs.writeFileSync(certPath, pems.cert);
+    console.info('Certificate generated.');
+
+    // Set environment variables with file paths
+    console.info("Updating environment variables.")
+    process.env.SERVER_CERT = certPath;
+    process.env.SERVER_KEY = keyPath;
+    console.log(process.env.SERVER_CERT);
+  } else {
+    console.info('Key and certificate already exist.');
+  }
+} else {
+  console.info("Using provided SERVER_CERT and SERVER_KEY environment variables.");
 }
 
 if (!process.env.SERVER_CA) {
@@ -121,10 +146,7 @@ if (!opts.ca) {
   throw new Error("There was a problem reading the CA certs. The variable SERVER_CA exists but readCAs returned nothing.");
 }
 
-// See https://stackoverflow.com/a/39872729/4427375
 app.use(bodyParser.json());
-
-// TODO - See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
 
 /**
  * clientAuthMiddleware checks inbound requests and validates that the client

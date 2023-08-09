@@ -2,12 +2,6 @@
 This script generates an Nginx configuration file using Jinja2 templating. It loads a template from a file named
 'config.j2', and uses environment variables to fill in the template. The resulting configuration is then written to
 a file named 'nginx.conf' in the directory specified by the SCRIPT_DIR environment variable.
-
-The following environment variables are used:
-- SERVER_NAME: the domain name of the server (just the name)
-- DOMAIN: the top-level domain of the server
-- IPV4_ADDRESS: the IPv4 address of the server. This is user selected
-- SCRIPT_DIR: the directory in which to write the resulting Nginx configuration file
 """
 
 import argparse
@@ -18,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 # Set up argument parser
 parser = argparse.ArgumentParser(description='Generates an Nginx configuration file using Jinja2 templating.')
 parser.add_argument('--server-name', required=True, help='The domain name of the server (just the name)')
-parser.add_argument('--domain', required=True, help='The top-level domain of the server')
+parser.add_argument('--server-domain', required=True, help='The top-level domain of the server')
 parser.add_argument('--ipv4-address', required=True, help='The IPv4 address of the server')
 parser.add_argument('--nginx-config-dir', required=True, help='The directory in which to write the resulting Nginx '
                                                               'configuration file')
@@ -43,7 +37,7 @@ parser.add_argument('--disable-client-cert-request', action='store_true',
 args = parser.parse_args()
 
 # Define variables
-dns_1 = args.server_name + '.' + args.domain
+dns_1 = args.server_name + '.' + args.server_domain
 ip_1 = args.ipv4_address
 nginx_config_dir = args.nginx_config_dir
 server_cert = args.server_cert

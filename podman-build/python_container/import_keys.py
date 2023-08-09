@@ -116,7 +116,7 @@ def validate_server_cert(server_cert_file, root_ca_cert_files):
         exit(1)
 
 
-def verify_certificate_common_name(certificate_file, config_field_name):
+def verify_certificate_common_name(certificate_file, config_field_name, certificate_type):
     """Verify the common name field in a certificate.
 
     This function opens the certificate file, verifies that the common name field
@@ -126,6 +126,7 @@ def verify_certificate_common_name(certificate_file, config_field_name):
     Args:
         certificate_file (str): The path to the certificate file.
         config_field_name (str): The name of the field in `config.yml` to compare.
+        certificate_type (str): Either "SERVER" or "CA".
 
     Returns:
         bool: True if the common name matches and the corresponding field is updated,
@@ -145,7 +146,12 @@ def verify_certificate_common_name(certificate_file, config_field_name):
             config_data = yaml.safe_load(file)
 
         config_value = config_data.get(config_field_name)
-        domain = config_data.get("DOMAIN", "")
+        if certificate_type not in ["SERVER", "ROOT_CA"]:
+            logger.error("Invalid certificate_type given to verify_certificate_common_name. Must be either 'SERVER' "
+                         "or 'ROOT_CA'")
+            exit(1)
+        domain_key = "SERVER_DOMAIN" if certificate_type == "SERVER" else "ROOT_CA_DOMAIN"
+        domain = config_data.get(domain_key, "")
 
         if config_value and common_name != config_value + f".{domain}":
             # Prompt the user to update the corresponding field in config.yml
@@ -157,22 +163,22 @@ def verify_certificate_common_name(certificate_file, config_field_name):
                 # Check if the field name contains a DNS suffix and drop it
                 if '.' in common_name:
                     logger.info(f"Confirming the DNS suffix in the common name {common_name} matches the value"
-                                f" of DOMAIN ({domain}) in config.yml...")
+                                f" of {domain_key} ({domain}) in config.yml...")
                     if domain and not common_name.endswith(domain):
-                        prompt = (f"The DNS suffix in {common_name} does not match the DOMAIN value ({domain}). "
-                                  f"Do you want to update the value of DOMAIN to match {common_name}? If you do not"
-                                  f" this is a fatal error and the program will exit. You will need to fix the field"
+                        prompt = (f"The DNS suffix in {common_name} does not match the {domain_key} value ({domain}). "
+                                  f"Do you want to update the value of {domain_key} to match {common_name}? If you do "
+                                  f"not this is a fatal error and the program will exit. You will need to fix the field"
                                   f" manually.")
                         if ask_yes_no(prompt):
                             parts = common_name.split(".")
                             # Get just the DNS suffix portion (everything after the name)
                             dns_suffix = ".".join(parts[1:])
-                            update_config_field('DOMAIN', dns_suffix)
+                            update_config_field(domain_key, dns_suffix)
                         else:
                             logger.error("Terminating.")
                             exit(1)
                     else:
-                        logger.info("DOMAIN value is correct. Continuing...")
+                        logger.info(f"{domain_key} value is correct. Continuing...")
                 return update_config_field(config_field_name, common_name.split('.')[0])
             else:
                 logger.error("No changes made to the corresponding field.")
@@ -318,7 +324,8 @@ if __name__ == '__main__':
     validate = args.validate
 
     if args.pkcs_file and not validate:
-        server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory, pkcs_password)
+        server_pem_file, root_ca_pem_files = convert_pkcs_to_pem(args.pkcs_file, cert_directory, root_cert_directory,
+                                                                 pkcs_password)
 
     # Verify the PEM files
     logger.info("Verify both files are in PEM format...")
@@ -341,13 +348,13 @@ if __name__ == '__main__':
 
     logger.info("Ensure that the common name in the root CA file matches ROOT_CA_NAME in config.yml...")
 
-    if verify_certificate_common_name(root_ca_pem_file, "ROOT_CA_NAME"):
+    if verify_certificate_common_name(root_ca_pem_file, "ROOT_CA_NAME", "ROOT_CA"):
         logger.info("Root CA certificate common name verification successful.")
     else:
         logger.error("Root CA certificate common name verification failed.")
         exit(1)
 
-    if verify_certificate_common_name(server_pem_file, "SERVER_NAME"):
+    if verify_certificate_common_name(server_pem_file, "SERVER_NAME", "SERVER"):
         logger.info("Server certificate common name verification successful.")
     else:
         logger.error("Server certificate common name verification failed.")

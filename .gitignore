@@ -43,8 +43,13 @@ new_binary.tar.gz
 /new_binary
 *.swp
 .vscode/
+
+
+# files used for testing
+podman-build/python_container/__pycache__/
+podman-build/python_container/config.yml
 *.p12
 *.crt
 *.key
 *.pem
-*.csr
+*.csr 

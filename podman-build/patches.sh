@@ -1105,8 +1105,6 @@ function patches_setup() {
   echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
   echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
   echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
-  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-backend"
-  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-backend"
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-backend"
   echo "DOWNLOAD_PATH=/patches/download" >> "${TOP_DIR}/.patches-backend"
   echo "XML_PATH=/patches/xml" >> "${TOP_DIR}/.patches-backend"
@@ -1153,18 +1151,16 @@ function patches_setup() {
     get_ip_address
   fi
 
-  # TODO - https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=31653546
-
   # Create the nginx environment variable configuration file
   echo "IPV4_ADDRESS=${ipv4_address}" > "${TOP_DIR}/.patches-nginx"
   echo "INTERFACE=${interface}" >> "${TOP_DIR}/.patches-nginx"
   echo "SERVER_NAME=${SERVER_NAME}" >> "${TOP_DIR}/.patches-nginx"
-  echo "DOMAIN=${DOMAIN}" >> "${TOP_DIR}/.patches-nginx"
-  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
-  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_DOMAIN=${SERVER_DOMAIN}" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.${DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.${ROOT_CA_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
   echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
   echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
@@ -1292,7 +1288,7 @@ EOF
   echo -e "\e[$(get_random_color)m################################################################################
 # Setup Summary:
 #   Patches Administrator Name: ${PATCHES_ADMINISTRATOR}
-#   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${DOMAIN}
+#   Patches Server URL: https://${ipv4_address} or https://${SERVER_NAME}.${SERVER_DOMAIN}
 #   Patches Client Certificate Directory: ${TOP_DIR}/${CERT_DIRECTORY}
 #
 # Next Steps:
@@ -1302,7 +1298,7 @@ EOF
 #      your local computer.
 #   2. Follow the instructions at https://github.com/dell/patches#setting-up-certs
 #   3. Don't forget after you import them to restart your browser!
-#   4. Add ${SERVER_NAME}.${DOMAIN} to your DNS server
+#   4. Add ${SERVER_NAME}.${SERVER_DOMAIN} to your DNS server
 #
 # Helpful Tips:
 #   - If you need to add an admin use ${SCRIPT_DIR}/patches.sh add-admin <admin_common_name>
