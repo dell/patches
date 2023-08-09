@@ -39,6 +39,12 @@ if (!process.env.SERVER_CERT || !process.env.SERVER_KEY) {
   const keyPath = path.join(__dirname, 'private-key.key');
   const certPath = path.join(__dirname, 'certificate.crt');
 
+  // Set environment variables with file paths
+  console.info("Updating environment variables.")
+  process.env.SERVER_CERT = certPath;
+  process.env.SERVER_KEY = keyPath;
+  console.log(process.env.SERVER_CERT);
+
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
     const attrs = [{ name: 'commonName', value: 'patches.lan' }];
     const pems = selfsigned.generate(attrs, { days: 365 });
@@ -49,11 +55,6 @@ if (!process.env.SERVER_CERT || !process.env.SERVER_KEY) {
     fs.writeFileSync(certPath, pems.cert);
     console.info('Certificate generated.');
 
-    // Set environment variables with file paths
-    console.info("Updating environment variables.")
-    process.env.SERVER_CERT = certPath;
-    process.env.SERVER_KEY = keyPath;
-    console.log(process.env.SERVER_CERT);
   } else {
     console.info('Key and certificate already exist.');
   }

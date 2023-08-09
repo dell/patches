@@ -1993,7 +1993,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v1.2.3-beta"
+    patches_echo "The current version is v1.3.0-beta"
 
     ;;
 

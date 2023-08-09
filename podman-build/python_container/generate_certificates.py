@@ -345,24 +345,24 @@ else:
 root_key, root_crt = create_root_ca(country=yaml_data['country'],
                                     state=yaml_data['state'],
                                     locality=yaml_data['locality'],
-                                    root_ca_name=f"{yaml_data['ROOT_CA_NAME']}.{yaml_data['DOMAIN']}",
+                                    root_ca_name=f"{yaml_data['ROOT_CA_NAME']}.{yaml_data['ROOT_CA_DOMAIN']}",
                                     organization_name=yaml_data['organization_name'],
                                     root_cert_directory=os.path.join(certs_directory, root_certs_directory))
 
-logger.info(f"Creating the patches server certificate {yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}. This will be "
+logger.info(f"Creating the patches server certificate {yaml_data['SERVER_NAME']}.{yaml_data['SERVER_DOMAIN']}. This will be "
             f"assigned to the nginx proxy...")
 
 create_ssl_cert(
     root_private_key=root_key,
     root_cert=root_crt,
     cert_directory=certs_directory,
-    host_name=f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}",
+    host_name=f"{yaml_data['SERVER_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     country=yaml_data['country'],
     state=yaml_data['state'],
     locality=yaml_data['locality'],
     organization_name=yaml_data['organization_name'],
     organization_unit=yaml_data['organization_unit'],
-    dns_1=f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}",
+    dns_1=f"{yaml_data['SERVER_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     dns_2=None,
     ip_1=ipv4_address,
     ip_2=None,
@@ -370,8 +370,8 @@ create_ssl_cert(
 
 logger.info("Updating config.yml with the new SERVER_NAME values...")
 
-update_config_file('SERVER_PEM', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.pem")
-update_config_file('PKCS_FILE', f"{yaml_data['SERVER_NAME']}.{yaml_data['DOMAIN']}.p12")
+update_config_file('SERVER_PEM', f"{yaml_data['SERVER_NAME']}.{yaml_data['SERVER_DOMAIN']}.pem")
+update_config_file('PKCS_FILE', f"{yaml_data['SERVER_NAME']}.{yaml_data['SERVER_DOMAIN']}.p12")
 
 logger.info("Creating the patches backend certificate...")
 
@@ -379,13 +379,13 @@ create_ssl_cert(
     root_private_key=root_key,
     root_cert=root_crt,
     cert_directory=certs_directory,
-    host_name=f"{yaml_data['BACKEND_CERT_NAME']}.{yaml_data['DOMAIN']}",
+    host_name=f"{yaml_data['BACKEND_CERT_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     country=yaml_data['country'],
     state=yaml_data['state'],
     locality=yaml_data['locality'],
     organization_name=yaml_data['organization_name'],
     organization_unit=yaml_data['organization_unit'],
-    dns_1=f"{yaml_data['BACKEND_CERT_NAME']}.{yaml_data['DOMAIN']}",
+    dns_1=f"{yaml_data['BACKEND_CERT_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     dns_2=None,
     ip_1=None,
     ip_2=None,
@@ -397,13 +397,13 @@ create_ssl_cert(
     root_private_key=root_key,
     root_cert=root_crt,
     cert_directory=certs_directory,
-    host_name=f"{yaml_data['FRONTEND_CERT_NAME']}.{yaml_data['DOMAIN']}",
+    host_name=f"{yaml_data['FRONTEND_CERT_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     country=yaml_data['country'],
     state=yaml_data['state'],
     locality=yaml_data['locality'],
     organization_name=yaml_data['organization_name'],
     organization_unit=yaml_data['organization_unit'],
-    dns_1=f"{yaml_data['FRONTEND_CERT_NAME']}.{yaml_data['DOMAIN']}",
+    dns_1=f"{yaml_data['FRONTEND_CERT_NAME']}.{yaml_data['SERVER_DOMAIN']}",
     dns_2=None,
     ip_1=None,
     ip_2=None,
