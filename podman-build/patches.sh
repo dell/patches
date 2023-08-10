@@ -1948,8 +1948,9 @@ logs)
       patches_read "Enter the location of the repository you would like to import. This should be a directory containing a catalog file and associated repository files."
       import_directory=${RETURN_VALUE}
 
-      patches_echo "Setting directory permissions for ${import_directory}. \`chmod -R 775 ${import_directory}\`. This will fail if your user does not have the ability to run chmod against this directory."
+      patches_echo "Setting directory permissions and ownership for ${import_directory}. \`chmod -R 775 ${import_directory}\`. This will fail if your user does not have the ability to run chmod against this directory."
       chmod -R 775 ${import_directory}
+      chown "$(whoami)": -R ${import_directory}
 
       if validate_directory "$import_directory"; then
         if [[ -n $(find "$import_directory" -maxdepth 1 -type f -name "*.xml") ]]; then
