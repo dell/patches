@@ -88,6 +88,7 @@ const parseComponents = (catalog, folderName, xml_file) => {
     comp.hashMD5 = comp.$.hashMD5;
     comp.packageID = comp.$.packageID;
     comp.packageType = comp.$.packageType;
+
     /* Add repo path for xml file as download path prefix */
     comp.path = folderName + "/" + comp.$.path;
     comp.xml_file_name = xml_file;
@@ -108,48 +109,37 @@ const parseComponents = (catalog, folderName, xml_file) => {
     }
     comp.ImportantInfo = comp.ImportantInfo[0].$.URL;
     delete comp.Criticality;
-    // comp.SupportedDevices[0].Device.forEach(dev => {
-    //   dev.componentID = dev.$.componentID
-    //   dev.embedded = dev.$.embedded
-    //   if (dev.PCIInfo) {
-    //     dev.PCIInfo.forEach(info => {
-    //       // console.log(info)
-    //       info.deviceID = info.$.deviceID
-    //       info.subDeviceID = info.$.subDeviceID
-    //       info.subVendorID = info.$.subVendorID
-    //       info.vendorID = info.$.vendorID
-    //       delete info.$
-    //     })
-    //   }
-    //   delete dev.$
-    //   dev.Display = dev.Display[0]._
-    // })
     delete comp.ActivationRules;
     delete comp.SupportedDevices;
     let systems = [];
     comp.SupportedSystems[0].Brand.forEach((dev) => {
-      // dev.key = dev.$.key
-      // dev.prefix = dev.$.prefix
-      // dev.Display = dev.Display
       dev.Model.forEach((info) => {
         systems.push({
           systemID: info.$.systemID,
           systemIDType: info.$.systemIDType,
           brand: info.$.brand,
         });
-        // delete info.$
       });
-      // delete dev.$
-      // dev.Display = dev.Display[0]._
     });
     comp.SupportedSystems = systems;
-    // delete comp.SupportedSystems
     if (comp.hasOwnProperty("SupportedOperatingSystems")) {
       delete comp.SupportedOperatingSystems;
+    }
+
+    // Handle Firmware Management Protocol (FMP) Wrappers
+    if (comp.hasOwnProperty("FMPWrappers")) {
+      const fmpWrappersData = comp.FMPWrappers[0].FMPWrapperInformation[0];
+      // Convert the FMPWrappers data to a JSON string
+      const fmpWrappersString = JSON.stringify(fmpWrappersData);
+      // Assign the JSON string to the "f_mp_wrappers" field
+      comp.f_mp_wrappers = fmpWrappersString;
+      // Remove the original "FMPWrappers" property since we don't need it anymore
+      delete comp.FMPWrappers;
     }
   });
   return components;
 };
+
 
 const parseBundles = (catalog) => {
   let bundles = catalog.Manifest.SoftwareBundle;

@@ -77,26 +77,43 @@ async function pushManifestDatabase(parsedInputs, trx) {
   let systems = parsedInputs[0];
   let components = parsedInputs[1];
 
-  // Insert the new systems data into the systems table in the database
+  // This code is responsible for inserting data into the "systems" table of the database
+  // using the `knex` query builder with the `trx` transaction object.
   const insertSystems = await trx("systems")
+    // Use the `.insert()` method to insert data into the "systems" table.
     .insert(
+      // For each system object in the `systems` array, this code creates a new object `newSystem`
+      // and processes the properties of the original system object.
       systems.map((system) => {
+        // Create a new object to store the modified data.
         let newSystem = {};
+
+        // Iterate over each property (key) of the `system` object.
         Object.keys(system).forEach((systemKey) => {
+          // Handle different properties based on their keys using a `switch` statement.
+
+          // If the property is "Display", assign its value to the `name` property of the `newSystem` object.
+          // This effectively renames the "Display" property to "name".
           switch (systemKey) {
             case "Display":
               newSystem.name = system[systemKey];
               break;
+
+            // For other properties (not "Display"), use the `camelToSnake()` function to convert the
+            // property key from camelCase to snake_case and assign the corresponding value to the `newSystem` object.
+            // This step effectively transforms the keys of the object from camelCase to snake_case.
             default:
               newSystem[camelToSnake(systemKey)] = system[systemKey];
               break;
           }
         });
+
+        // Return the modified `newSystem` object for insertion into the "systems" table.
         return newSystem;
       })
     )
-    // If two systems have the same system id, which would generate a conflict
-    // ignore the conflict and do nothing
+    // If two systems have the same "system_id", which would generate a conflict during insertion,
+    // this part of the code specifies to ignore the conflict and do nothing.
     .onConflict("system_id")
     .ignore();
 
@@ -118,85 +135,83 @@ async function pushManifestDatabase(parsedInputs, trx) {
       // https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635391
       delete component.SupportedSystems;
 
+      // Create an empty object to store the payload data for inserting into the "components" table.
       let insertPayload = {};
 
+      // Loop through each property (key) of the `component` object.
       for (let j = 0; j < Object.keys(component).length; j++) {
+        // Get the current key (property name) from the `component` object.
         var key = Object.keys(component)[j];
+
+        // Convert the key from camelCase to snake_case and store it in the `newKey` variable.
         let newKey = key.charAt(0).toLowerCase() + key.slice(1);
+
+        // Handle a special case for the "LUCategory" property: Rename it to "lu_category".
         if (key === "LUCategory") {
           newKey = "lu_category";
+          // Add the renamed property and its value to the `insertPayload` object.
           insertPayload[newKey] = component[key];
         } else {
+          // For properties other than "LUCategory", use the `camelToSnake()` function (not shown here) to convert the key to snake_case,
+          // and add the property and its value to the `insertPayload` object.
           insertPayload[camelToSnake(newKey)] = component[key];
         }
       }
 
-      // TODO - The while loop doesn't work. The line 
-      // delete insertPayload[key]; will run correctly and delete not 
-      // compliant values but by the time componentInsertResults reruns, 
-      // the value will return. I do not know why. 
-      // https://github.com/grantcurell/patches/issues/32 
-      delete insertPayload.f_mp_wrappers; 
-
-      // This for loop handles the case that a new bundle key is added that
-      // we don't support. It will be handled gracefully and not cause the 
-      // import to fail.
-      while(true) {
-        try {
-          const componentInsertsResults = await trx("components")
-            .insert(insertPayload)
-            .returning("id")
-            .onConflict("hash_md5")
-            .ignore()
-            .then((comp) => {
-              comp = comp[0];
-              let compSystemsInsert = [];
-              /* Reject null/duplicates to avoid extreme table sizes
+      try {
+        // Insert the `insertPayload` data into the "components" table.
+        // Use the `returning` method to return the ID of the inserted component after the insertion.
+        // If there is a conflict with an existing component (determined by the "hash_md5" column),
+        // ignore the conflict and do nothing.
+        const componentInsertsResults = await trx("components")
+          .insert(insertPayload)
+          .returning("id")
+          .onConflict("hash_md5")
+          .ignore()
+          .then((comp) => {
+            // The `then` block is executed after the insertion is successful.
+            // The `comp` variable holds the ID of the inserted component.
+            comp = comp[0];
+      
+            // Create an empty array to store the payload data for inserting into the "component_systems" table.
+            let compSystemsInsert = [];
+      
+            /* 
+              Reject null/duplicates to avoid extreme table sizes
               as the result of the component/componentsystems linkage
-
-              in future put logging after the if statement checking the component
-
-              // TODO - this seems to be important but I don't know what the
-              original authors had in mind. https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29712915
-              */
-              if (comp) {
-                compSystems.forEach((compSystem) => {
-                  compSystemsInsert.push({
-                    component_id: comp,
-                    system_id: compSystem.systemID,
-                  });
+            */
+            if (comp) {
+      
+              // Loop through each supported system of the component (compSystems).
+              compSystems.forEach((compSystem) => {
+                // Get the system ID directly from the compSystem object.
+                const systemId = compSystem.systemID;
+      
+                // Add the payload for linking the component and system to the `compSystemsInsert` array.
+                compSystemsInsert.push({
+                  component_id: comp, // Use the component's ID
+                  system_id: systemId,       // Use the system's ID
                 });
-                try {
-                  return trx("component_systems").insert(compSystemsInsert);
-                } catch (error) {
-                  console.error(error);
-                }
-              }
-            });
-
-            break;
-        } catch (error) {
-
-          if (error.message.includes('does not exist')) {
-            knex('components').columnInfo().then((componentColumns) => {
-              Object.keys(insertPayload).forEach((key) => {
-                console.debug(`DEBUG: Checking if ${key} is in insertPayload.`);
-                if(!componentColumns.hasOwnProperty(key)) {
-                  console.warn(`WARNING: While importing the components for ` +
-                  `the repository's new XML the key ${key} was present in the` +
-                  ` data found. This key is not part of our database schema.` +
-                  ` So we were not able to add the component. You should ` +
-                  `report this so it can be fixed. The exact error was ` +
-                  `${error}`);
-                  delete insertPayload[key];
-                }
               });
-            });
-          } else {
-            console.error(`Error: ${error.message}`);
-          }
-        }
+      
+              try {
+                // Insert the `compSystemsInsert` data into the "component_systems" table,
+                // linking the component to its supported systems.
+                return trx("component_systems").insert(compSystemsInsert);
+              } catch (error) {
+                console.error(`Error inserting into component_systems: ${error.message}`);
+              }
+            }
+          });
+      } catch (error) {
+        // If an error occurs during the insertion process, log the error message.
+        console.error(`Error inserting into components: ${error.message}`);
+        
+        // Print the description of the component causing the conflict
+        console.error(`Component description causing conflict: ${insertPayload.description}`);
       }
+      
+      
     }
     await trx.commit();
   } else {

@@ -86,8 +86,7 @@ podman run \
   --network host-bridge-net \
   -it \
   localhost/dell/patches-base:latest \
-  /bin/bash &&
-podman restart patches-nginx
+  /bin/bash
 ```
 
 - NOTE: YOU MUST RUN `podman restart patches-nginx` for the frontend to work when you do this otherwise nginx will used a cached DNS result for patches-backend which leads to a failure beacuse it will have the incorrect IP address
@@ -107,6 +106,7 @@ node --inspect-brk=0.0.0.0:9229 server/index.js --knexfile /home/node/app/server
 ```
 
 - I have also noticed that in order for breakpoints to trigger I sometimes have to detach the debugger in vscode, kill the program, and rerun.
+- **WARNING** A lot of the time I will have to manually write `debugger;` to get vscode to actually break. It seems like vscode is bugged. If you add that statement, breakpoints in the block start working otherwise they are ignored entirely. Sometimes I can delete the debugger statement and they will still bind afterward. I'm not sure of the pattern.
 
 ### Debugging the Frontend
 

@@ -79,33 +79,49 @@ exports.up = async (knex) => {
       table.timestamps(undefined, true)
     }),
     knex.schema.createTable('components', function (table) {
-      table.bigInteger('id').defaultTo(knex.raw('make_random_id()')).primary()
-      table.text('name')
-      table.string('component_type')
-      table.text('description')
-      table.string('lu_category')
-      table.string('category')
-      table.text('revision_history')
-      table.string('important_info')
-      table.boolean('container_power_cycle_required')
-      table.datetime('date_time')
-      table.string('dell_version')
-      table.string('hash_md5').unique().notNullable()
-      table.string('package_id')
-      table.string('package_type')
-      table.string('path')
+      table.bigInteger('id').defaultTo(knex.raw('make_random_id()')).primary();
+      table.text('name');
+      table.string('component_type');
+      table.text('description');
+      table.string('lu_category');
+      table.string('category');
+      table.text('revision_history');
+      table.string('important_info');
+      table.boolean('container_power_cycle_required');
+      table.datetime('date_time');
+      table.string('dell_version');
+      table.string('hash_md5').unique().notNullable();
+      table.string('package_id');
+      table.string('package_type');
+      table.string('path');
       table.string('xml_file_name')
-          .notNullable()
-          .references('file_name')
-          .inTable('xml_files')
-          .onDelete('CASCADE')
-      table.boolean('reboot_required')
-      table.date('release_date')
-      table.string('release_id')
-      table.string('schema_version')
-      table.integer('size')
-      table.string('vendor_version')
-      table.timestamps(undefined, true)
+        .notNullable()
+        .references('file_name')
+        .inTable('xml_files')
+        .onDelete('CASCADE');
+      table.boolean('reboot_required');
+      table.date('release_date');
+      table.string('release_id');
+      table.string('schema_version');
+      table.integer('size');
+      table.string('vendor_version');
+      table.jsonb('f_mp_wrappers').defaultTo(JSON.stringify({
+        digitalSignature: null,
+        driverFileName: null,
+        filePathName: null,
+        identifier: null,
+        name: null,
+        inventory: {
+          source: null,
+          supported: null
+        },
+        update: {
+          rollback: null,
+          supported: null
+        }
+      }));
+    
+      table.timestamps(undefined, true);
     }),
     knex.schema.createTable('component_systems', function (table) {
       table.bigInteger('id').defaultTo(knex.raw('make_random_id()')).primary()

@@ -15,14 +15,14 @@ let url = require('url')
 let db_url = url.parse(process.env.DATABASE_URL)
 
 // get the host from the db_url
-let host = db_url.host.substr(0, db_url.host.indexOf(':'))
+let host = db_url.host.slice(0, db_url.host.indexOf(':'));
 
 // get the user and password from the db_url
-let user = db_url.auth.substr(0, db_url.auth.indexOf(':'))
-let pass = db_url.auth.substr(db_url.auth.indexOf(':') + 1, db_url.auth.length)
+let user = db_url.auth.slice(0, db_url.auth.indexOf(':'));
+let pass = db_url.auth.slice(db_url.auth.indexOf(':') + 1);
 
 // get the database name from the db_url
-let db = db_url.path.substr(1)
+let db = db_url.path.slice(1);
 
 module.exports = {
   development: {
@@ -56,9 +56,3 @@ module.exports = {
     }
   }
 }
-
-// path, system_id, document_name, user_id of who uploaded (name)
-// /systems/upload
-// upload doc, save to file system, save path to db
-// underneath upload box on ui, pull list of all docs and show them
-// doc_name, file upload path, box 

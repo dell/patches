@@ -599,21 +599,5 @@ https.createServer(opts, app).listen(BACKEND_PORT, () => {
   } catch (error) {
     console.error(`ERROR: Patches encountered a general failure. That it ` +
     `couldn't handle. The error was: ${error}`);
-    /*
-     Not necessary for existing application,
-     leaving this in here for future work that
-     requires application restart based on unhandled conditions
-     */
-
-    /*console.log(err)
-
-    process.on('exit', () =>{
-      require('child_process').spawn(process.argv.shift(), process.argv, {
-        cwd: process.cwd(),
-        detached : true,
-        stdio: 'inherit'
-      })
-    })
-    process.exit(1)*/
   }
 });
