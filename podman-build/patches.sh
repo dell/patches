@@ -595,7 +595,6 @@ function run_nginx() {
       --publish 80:80 \
       --detach \
       --network host-bridge-net \
-      --restart=always \
       docker.io/library/nginx:${NGINX_VERSION}
   else
     # Ask if user wants to run as sudo
@@ -625,7 +624,6 @@ function run_nginx() {
         --publish 80:80 \
         --detach \
         --network host-bridge-net \
-        --restart=always \
         docker.io/library/nginx:${NGINX_VERSION}
 
     else
@@ -654,7 +652,6 @@ function run_nginx() {
         --publish ${nginx_port}:443 \
         --detach \
         --network host-bridge-net \
-        --restart=always \
         docker.io/library/nginx:${NGINX_VERSION}
     fi
   fi
@@ -782,7 +779,6 @@ function run_postgresql() {
 
   podman run \
     --name "patches-psql" \
-    --restart "unless-stopped" \
     --env-file ${TOP_DIR}/.patches-psql \
     --volume psql-storage:/var/lib/postgresql/data:Z \
     --network host-bridge-net \
@@ -865,29 +861,31 @@ function enable_systemd_service() {
 
       patches_echo "Creating systemd service..."
 
-      # Create the service unit file
-      service_file="/home/$(whoami)/.config/systemd/user/patches.service"
+      # Get the current user's name
+      current_user=$(whoami)
 
-      cat <<EOF >"$service_file"
-[Unit]
-Description=Patches Service
-Wants=network.target
-After=network.target
-Requires=user@${USER}.service
+      # Directory path for user systemd unit files
+      unit_files_dir="/home/$current_user/.config/systemd/user/"
 
-[Service]
-Type=oneshot
-TimeoutStartSec=10min
-ExecStart=/bin/bash ${SCRIPT_DIR}/patches.sh start --continuous
+      # Loop through the container names
+      for container_name in "${containers[@]}"; do
+          service_name="patches-${container_name#patches-}"
 
-[Install]
-WantedBy=default.target
-EOF
+          # Check if the service file exists, and if so, delete it
+          if [[ -f "${unit_files_dir}${service_name}.service" ]]; then
+              systemctl --user stop "$service_name.service"
+              systemctl --user disable "$service_name.service"
+              rm "${unit_files_dir}${service_name}.service"
+          fi
 
-      # Enable the service to start on system startup
-      systemctl --user enable patches.service
+          # Generate systemd unit file
+          podman generate systemd --name "$container_name" > "${unit_files_dir}${service_name}.service"
 
-      patches_echo "Systemd service created and enabled successfully."
+          # Enable and start the user service
+          systemctl --user enable "$service_name.service"
+      done
+
+      patches_echo "User systemd unit files generated, existing services deleted, and new services enabled and started."
 
     else
       patches_echo "We were unable to enable linger for your user. We cannot install the systemd service. The setup has not failed but we are skipping the installation of the systemd service. You can still start patches manually as your user with \`bash ${SCRIPT_DIR}/patches.sh start\`. You can also re-attempt the service setup with \`bash ${SCRIPT_DIR}/patches.sh install-service\`." --error    
@@ -1226,7 +1224,7 @@ function patches_setup() {
 
   run_nginx
 
-  podman run --restart=always -dit --name patches-httpd --publish 8080:80 --volume ${TOP_DIR}/repos/xml/:/usr/local/apache2/htdocs/:z docker.io/library/httpd:${HTTPD_VERSION}
+  podman run -dit --name patches-httpd --publish 8080:80 --volume ${TOP_DIR}/repos/xml/:/usr/local/apache2/htdocs/:z docker.io/library/httpd:${HTTPD_VERSION}
 
   patches_echo "Checking if the server is running..."
 
