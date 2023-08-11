@@ -128,14 +128,13 @@ podman run \
   --publish "${FRONTEND_PORT}:${FRONTEND_PORT}" \
   -it \
   localhost/dell/patches-base:latest \
-  /bin/bash &&
-podman restart patches-nginx
+  /bin/bash
 ```
 
+- NOTE: YOU MUST RUN `podman restart patches-nginx` for the frontend to work when you do this otherwise nginx will used a cached DNS result for patches-backend which leads to a failure beacuse it will have the incorrect IP address
 - Inside the container run `npm start`
 - After everything is started you can either hit port 3000 directly but then API calls won't work. You can hit the regular IP and everything should work as expected.
-  - Like the backend, for real testing to work you'll have to restart patches-nginx otherwise it will have the incorrect IP address
-  - TODO: Right now I'm having problems with the certificates - the debugger won't attach because it doesn't have a matching cert
+- TODO: Right now I'm having problems with the certificates - the debugger won't attach because it doesn't have a matching cert
 
 ## Debugging Certificates
 

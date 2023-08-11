@@ -24,7 +24,6 @@ module.exports = (app) => {
         // If there are duplicate users (which shouldn't happen)
         else if (user.length > 1) {
           // Send an error response for duplicate users
-          // (This comment indicates that the author is not handling the duplicate user scenario properly)
           return res.send({ error: "Duplicate user" });
         }
         // If the user is not found, insert the user into the "users" table

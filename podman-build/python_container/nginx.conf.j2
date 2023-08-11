@@ -44,7 +44,7 @@ http {
         {% else %}
         # Request client certificates but skip verification
         ssl_verify_client optional_no_ca;
-        ssl_client_certificate "{{ root_cert_path }}";
+        ssl_trusted_certificate "{{ root_cert_path }}";
         {% endif %}
         {% else %}
         # Request client certificates and perform verification

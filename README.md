@@ -8,6 +8,7 @@
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
     - [STIGs](#stigs)
       - [How to Apply](#how-to-apply)
+  - [Support Browsers](#support-browsers)
   - [System Requirements](#system-requirements)
   - [Our Stance on Security](#our-stance-on-security)
   - [System Requirements](#system-requirements-1)
@@ -96,6 +97,12 @@ If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organizat
 5. If you have done everything correctly the Security Profile should say "Everything Okay"
 
 ![](images/2023-06-26-11-27-06.png)
+
+## Support Browsers
+
+- Principal testing has been done on Google Chrome
+- Firefox works but PKCS#12 certs behave differently. We recommend Chrome but Firefox should work as long as the PKCS#12 cert you use for the user has a password.
+- Testing was also performed with Brave Browser. However, due to Brave's enhanced security controls certificates do not always behave and we observed several problems with it reading the user certificate correctly
 
 ## System Requirements
 
