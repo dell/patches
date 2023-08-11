@@ -859,13 +859,28 @@ function enable_systemd_service() {
 
       patches_echo "Linger enabled for the user."
 
-      patches_echo "Creating systemd service..."
-
       # Get the current user's name
       current_user=$(whoami)
 
       # Directory path for user systemd unit files
       unit_files_dir="/home/$current_user/.config/systemd/user/"
+
+      # Create an overarching service unit file for patches.service
+      overarching_service_unit="${unit_files_dir}patches.service"
+      cat > "$overarching_service_unit" <<EOF
+[Unit]
+Description=Overarching service to manage Patches containers
+Documentation=man:systemd(1)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true
+# This service shall be considered active after start
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
+EOF
 
       # Loop through the container names
       for container_name in "${containers[@]}"; do
@@ -881,11 +896,20 @@ function enable_systemd_service() {
           # Generate systemd unit file
           podman generate systemd --name "$container_name" > "${unit_files_dir}${service_name}.service"
 
-          # Enable and start the user service
+          # Enable the user service
           systemctl --user enable "$service_name.service"
+
+          # Add PartOf and After directives to individual container services
+          sed -i "/\[Unit\]/a PartOf=patches.service\nAfter=patches.service" "${unit_files_dir}${service_name}.service"
+
+          # Update WantedBy directive to be WantedBy=patches.service
+          sed -i "s/WantedBy=default.target/WantedBy=patches.service/" "${unit_files_dir}${service_name}.service"
       done
 
-      patches_echo "User systemd unit files generated, existing services deleted, and new services enabled and started."
+      # Enable and start the overarching service
+      systemctl --user enable "patches.service"
+
+      patches_echo "User systemd unit files generated and services enabled."
 
     else
       patches_echo "We were unable to enable linger for your user. We cannot install the systemd service. The setup has not failed but we are skipping the installation of the systemd service. You can still start patches manually as your user with \`bash ${SCRIPT_DIR}/patches.sh start\`. You can also re-attempt the service setup with \`bash ${SCRIPT_DIR}/patches.sh install-service\`." --error    
@@ -1513,7 +1537,6 @@ check_images() {
   fi
 }
 
-
 # Function: validate_directory
 #
 # Description: Checks if the specified directory exists and is valid.
@@ -1537,10 +1560,12 @@ function validate_directory() {
 
 # Function: patches_stop
 #
-# Description: Stops the specified containers used by Patches.
+# Description: Stops the containers used by Patches and checks their status.
 #
-# Parameters:
-#   - An array of container names to stop.
+# Parameters: None
+#
+# Environment Variables:
+#   - containers: An array of container names
 #
 # Returns: None
 #
@@ -1550,10 +1575,17 @@ function patches_stop() {
     patches_echo "Patches must be set up before running. Please run 'patches setup' first."
     exit 1
   fi
-  
-  for container in "${containers[@]}"; do
-    patches_echo "Stopping container: $container"
-    podman stop "$container" >/dev/null 2>&1 || patches_echo "Container not found: $container" --error
+
+  # Stop all patches services in one command
+  systemctl --user stop "${containers[@]}"
+
+  # Print status for each service
+  for container_name in "${containers[@]}"; do
+    if ! systemctl --user is-active "${container_name}" >/dev/null; then
+      patches_echo "Service ${container_name} is stopped."
+    else
+      patches_echo "Failed to stop service ${container_name}."
+    fi
   done
 }
 
@@ -1564,8 +1596,7 @@ function patches_stop() {
 # Parameters: None
 #
 # Environment Variables:
-#   - SCRIPT_DIR: The directory where the Patches scripts are located.
-#   - CONTINUOUS: Used to have it continuously try to start Patches
+#   - containers: An array of container names
 #
 # Returns: None
 #
@@ -1575,40 +1606,46 @@ function patches_start() {
     exit 1
   fi
 
-  all_containers_running=false
+  # Start all patches services in one command
+  systemctl --user start "${containers[@]}"
 
-  while true; do
-    all_containers_running=true
-
-    for container in "${containers[@]}"; do
-      patches_echo "Checking container status: $container"
-      status=$(podman container inspect -f '{{.State.Status}}' "$container" 2>/dev/null)
-
-      if [[ "$status" != "running" ]]; then
-        all_containers_running=false
-
-        patches_echo "Starting container: $container"
-        if ! podman start "$container" >/dev/null 2>&1; then
-          patches_echo "Container $container failed to start" --error
-        fi
-
-        if [[ $container == "patches-nginx" ]]; then
-          check_nginx_status
-        elif [[ $container == "patches-psql" ]]; then
-          wait_for_postgresql
-        fi
-      fi
-    done
-
-    if [[ $all_containers_running == "true" ]]; then
-      break
+  # Print status for each service
+  for container_name in "${containers[@]}"; do
+    if systemctl --user is-active "${container_name}" >/dev/null; then
+      patches_echo "Service ${container_name} is running."
+    else
+      patches_echo "Failed to start service ${container_name}."
     fi
+  done
+}
 
-    if [[ $CONTINUOUS != "TRUE" ]]; then
-      break
+# Function: patches_restart
+#
+# Description: Restarts the containers used by Patches and checks their status.
+#
+# Parameters: None
+#
+# Environment Variables:
+#   - containers: An array of container names
+#
+# Returns: None
+#
+function patches_restart() {
+  if ! check_images; then
+    patches_echo "Patches must be set up before running. Please run 'patches setup' first."
+    exit 1
+  fi
+
+  # Restart all patches services in one command
+  systemctl --user restart "${containers[@]}"
+
+  # Print status for each service
+  for container_name in "${containers[@]}"; do
+    if systemctl --user is-active "${container_name}" >/dev/null; then
+      patches_echo "Service ${container_name} is running."
+    else
+      patches_echo "Failed to restart service ${container_name}."
     fi
-
-    sleep 1
   done
 }
 
@@ -1649,6 +1686,7 @@ while [[ $# -gt 0 ]]; do
       echo -e "${COMMAND_COLOR}  setup${EXPLANATION_COLOR}                   Runs Patches setup"
       echo -e "${COMMAND_COLOR}  start${EXPLANATION_COLOR}                   Start up containerized automation server services"
       echo -e "${COMMAND_COLOR}  stop${EXPLANATION_COLOR}                    Stop services"
+      echo -e "${COMMAND_COLOR}  restart${EXPLANATION_COLOR}                 Restart all services"      
       echo -e "${COMMAND_COLOR}  run${EXPLANATION_COLOR}                     Allows you to run a command in the automation server container."
       echo -e "${COMMAND_COLOR}  status${EXPLANATION_COLOR}                  Get the status of all the component containers for Patches"
       echo -e "${COMMAND_COLOR}  logs${EXPLANATION_COLOR}                    Get the logs for all the Patches services. They will be written to \${TOP_DIR}/logs"
@@ -1838,6 +1876,12 @@ case $1 in
 
     ;;
 
+  restart)
+  
+    patches_restart
+
+    ;;
+
   status)
     all_running=true
 
@@ -1992,7 +2036,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v1.3.1-beta"
+    patches_echo "The current version is v1.3.2-beta"
 
     ;;
 
