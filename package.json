@@ -1,6 +1,6 @@
 {
   "name": "patches",
-  "version": "1.3.2-beta",
+  "version": "1.3.3-beta",
   "private": true,
   "dependencies": {
     "@babel/core": "^7.15.5",

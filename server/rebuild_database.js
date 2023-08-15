@@ -171,7 +171,9 @@ async function pushManifestDatabase(parsedInputs, trx) {
           .then((comp) => {
             // The `then` block is executed after the insertion is successful.
             // The `comp` variable holds the ID of the inserted component.
-            comp = comp[0];
+            // See https://github.com/dell/patches/issues/14
+            // In some versions of the schema comp[0] is a dictionary, in others it is an int. Here we account for this
+            comp = typeof comp[0] === 'object' ? comp[0].id : comp[0];
       
             // Create an empty array to store the payload data for inserting into the "component_systems" table.
             let compSystemsInsert = [];
@@ -186,7 +188,6 @@ async function pushManifestDatabase(parsedInputs, trx) {
               compSystems.forEach((compSystem) => {
                 // Get the system ID directly from the compSystem object.
                 const systemId = compSystem.systemID;
-      
                 // Add the payload for linking the component and system to the `compSystemsInsert` array.
                 compSystemsInsert.push({
                   component_id: comp, // Use the component's ID
