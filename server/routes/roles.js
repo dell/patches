@@ -1,3 +1,5 @@
+const logger = require('../logger');
+
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
 
 const authUser = (subject) => {
@@ -85,19 +87,19 @@ module.exports = (app) => {
                           res.send({ roles });
                         })
                         .catch((err) => {
-                          console.log("Unable to get roles for user" + err);
+                          logger.error("Unable to get roles for user" + err);
                           res.send({ error: err });
                         });
                     })
                     .catch((err) => {
-                      console.log(
+                      logger.error(
                         "Unable to update user role in database" + err
                       );
                       res.send({ error: err });
                     });
                 })
                 .catch((err) => {
-                  console.log("Unable to find user in roles table" + err);
+                  logger.error("Unable to find user in roles table" + err);
                   res.send({ error: err });
                 });
             });

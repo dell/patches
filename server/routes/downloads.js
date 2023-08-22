@@ -1,6 +1,7 @@
 const stream = require("stream");
 const download_path = process.env.REPO_PATH;
 const path = require("path");
+const logger = require('../logger');
 
 let rowCount = 0;
 
@@ -76,7 +77,7 @@ const getDownloads = (params) => {
     "user_downloads.user"
   );
 
-  console.log(downloadQuery.toString());
+  logger.info(downloadQuery.toString());
 
   if (id) downloadQuery.where("user_downloads.name", id);
   if (organizationalUnit)

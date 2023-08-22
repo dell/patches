@@ -23,7 +23,6 @@ export const setUser = (user) => {
 export const hasAdminRole = (user) => {
   try {
     return (user || getUser()).roles["title"] === "admin" ? true : false;
-    /*return (user || getUser()).roles.find((r) => ["admin"].includes(r.title));*/
   } catch {
     return false;
   }

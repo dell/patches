@@ -6,6 +6,7 @@ const xml2js = require('xml2js')
 const app = express()
 const http = require('http').Server(app)
 const bodyParser = require('body-parser')
+const logger = require('../logger');
 
 app.use(bodyParser.json())
 
@@ -68,7 +69,7 @@ app.get('/api/systems', (req, res) => {
   if (!catalog.Manifest) return res.send({ error: 'Catalog not parsed yet' })
   let systems = {}
   catalog.Manifest.SoftwareComponent.forEach(comp => {
-    console.log(comp.SupportedSystems[0])
+    logger.info(`Support systems are ${comp.SupportedSystems[0]}`)
     comp.SupportedSystems[0].Brand.forEach(b => {
       let brandName = b.Display[0]._
       b.Model.forEach(model => {
@@ -136,7 +137,7 @@ app.get('/api/components', (req, res) => {
       dev.embedded = dev.$.embedded
       if (dev.hasOwnProperty('PCIInfo')) {
         dev.PCIInfo.forEach(info => {
-          console.log(info)
+          logger.info(info)
           info.deviceID = info.$.deviceID
           info.subDeviceID = info.$.subDeviceID
           info.subVendorID = info.$.subVendorID
@@ -187,5 +188,5 @@ app.get('*', (req, res, next) => {
 
 const PORT = process.env.PORT || 9000
 http.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}!`)
+  logger.info(`App listening on port ${PORT}!`)
 })

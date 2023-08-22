@@ -2,15 +2,9 @@ import React from "react";
 import qs from "qs";
 import Select from "react-select";
 import AsyncSelect from "react-select/async";
-import Moment from "react-moment";
 import "moment-timezone";
-import "react-dates/initialize";
-import "react-dates/lib/css/_datepicker.css";
-import {
-  DateRangePicker,
-  SingleDatePicker,
-  DayPickerRangeController,
-} from "react-dates";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   ResponsiveContainer,
   BarChart,
@@ -23,9 +17,6 @@ import {
 } from "recharts";
 import http from "../../http";
 import "./style.css";
-
-/* wacky required to prevent function call stacking on react component datepicker issue #239*/
-const falseFunc = () => false;
 
 const groupOptions = [
   { label: "Category", value: "category" },
@@ -352,29 +343,36 @@ class Dashboard extends React.Component {
                 onChange={this.handleTimePeriodChange}
               />
               {this.state.customTimePeriod && (
-                <div>
-                  <div className="col custom-time">
+                <div className="col custom-time">
+                  <div className="dashboard-label">
+                    <span className="filter-header">Custom Time Period</span>
+                  </div>
+                  <div className="dashboard-control-horizontal">
                     <div className="dashboard-label">
                       <span className="filter-header">Custom Time Period</span>
                     </div>
-                    <DateRangePicker
-                      startDateId="startDate"
-                      endDateId="endDate"
-                      startDate={this.state.startDate}
-                      endDate={this.state.endDate}
-                      /* enable dates in the past */
-                      isOutsideRange={falseFunc}
-                      onDatesChange={({ startDate, endDate }) => {
-                        this.setState(
-                          { startDate, endDate },
-                          this.handleCustomTimePeriod
-                        );
-                      }}
-                      focusedInput={this.state.focusedInput}
-                      onFocusChange={(focusedInput) => {
-                        this.setState({ focusedInput });
-                      }}
-                    />
+                    <div className="col custom-time">
+                      <DatePicker
+                        selected={this.state.startDate}
+                        startDate={this.state.startDate}
+                        endDate={this.state.endDate}
+                        onChange={(date) => this.setState({ startDate: date })}
+                        selectsStart
+                        startDatePlaceholderText="Start Date"
+                        isClearable
+                        className="form-control"
+                      />
+                      <DatePicker
+                        selected={this.state.endDate}
+                        startDate={this.state.startDate}
+                        endDate={this.state.endDate}
+                        onChange={(date) => this.setState({ endDate: date })}
+                        selectsEnd
+                        endDatePlaceholderText="End Date"
+                        isClearable
+                        className="form-control"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -403,7 +401,6 @@ class Dashboard extends React.Component {
                         if (opt) this.updateSearch({ file: opt.value });
                         this.setState({ file: opt }, this.getDownloadCount);
                       }}
-                      /*onFocusChange={(opt) => {this.updateSearch({ file: opt.value })}}*/
                       menuPlacement="auto"
                       isClearable
                     />

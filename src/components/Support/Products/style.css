@@ -27,7 +27,7 @@
   margin: 0 5px;
 }
 
-.breadcrum-active {
+.breadcrumb.active {
   color: black;
 }
 

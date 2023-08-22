@@ -1,9 +1,7 @@
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
-const { debug } = require("console");
 const fs = require("fs");
-const path = require("path");
 const parsed_path = process.env.PARSED_PATH;
-const repo_path = process.env.REPO_PATH;
+const logger = require('./logger');
 
 knex = require("./db");
 
@@ -19,48 +17,6 @@ function camelToSnake(inputString) {
       return m[0] + "_" + m[1];
     })
     .toLowerCase();
-}
-
-/**
- * loadParsedManifest - This function is triggered when an update is detected
- * in the xml/parsed folder. It will read the updated JSON files from disk
- * and then parse the JSON into variables and return them
- * @param {string} currentXMLFile The name of the updated XML file. Ex: R7525
- * @returns {Array[Array, Array]} Arrays of the systems and component JSON
- * loaded from disk
- */
-function loadParsedManifest(currentXMLFile) {
-  let systems = "";
-  let components = "";
-  try {
-
-    // Load the updated systems file from disk
-    systems = fs.readFileSync(
-      parsed_path + `/${currentXMLFile}_systems.json`,
-      "utf8"
-    );
-
-    // Parse it to JSON
-    systems = JSON.parse(systems);
-
-    // Read the updated components file from disk
-    components = fs.readFileSync(
-      parsed_path + `/${currentXMLFile}_components.json`,
-      "utf8"
-    );
-
-    // Parse it to JSON
-    components = JSON.parse(components);
-
-  } catch (error) {
-    console.error(`ERROR: We encountered an error while trying to read either ` +
-    `${parsed_path + `/${currentXMLFile}_systems.json`} or ` +
-    `${parsed_path + `/${currentXMLFile}_components.json`} from disk. ` +
-    `The error was: ${error}`);
-  }
-
-  // Return the parsed JSON objects
-  return [systems, components];
 }
 
 /**
@@ -240,7 +196,7 @@ module.exports.cleanDatabase = async (redirectFlag) => {
       throw new Error("Components Delete transaction failed");
     }
   } catch (error) {
-    console.error(`ERROR: There was an error while trying to cleanup the database. ` +
+    logger.error(`There was an error while trying to cleanup the database. ` +
     `This function is called when we detect that a repo no longer exists and ` +
     `need to remove its data from the database. The error was: ${error}`)
     await trx.rollback(error);
@@ -251,34 +207,61 @@ module.exports.cleanDatabase = async (redirectFlag) => {
 
 /**
  * rebuildDatabase - Responsible for updating the database when new repos are
- * added
+ * added. This function is triggered when an update is detected
+ * in the xml/parsed folder. It will read the updated JSON files from disk,
+ * then parse the JSON into variables and insert them into the database.
  * @param {*} currentXMLFile The current XML file for processing. This is the
- * repo XML file whose corresponding data we want to insert into the database
- * @param {*} redirectFlag The current value of the redirectFlag. See 
+ * repo XML file whose corresponding data we want to insert into the database.
+ * @param {*} redirectFlag The current value of the redirectFlag. See
  * redirectFlag's definition for more info.
- * @returns {boolean} Returns a new value for the redirectFlag. After this 
+ * @returns {boolean} Returns a new value for the redirectFlag. After this
  * finishes processing the new data the server should be ready and the
  * redirectFlag set to false.
  */
 module.exports.rebuildDatabase = async (currentXMLFile, redirectFlag) => {
+  logger.info(`Rebuilding database with data from ${currentXMLFile}`);
 
   // Create a transaction for use later
   // See https://knexjs.org/guide/transactions.html
   let trx = await knex.transaction();
   try {
-    // Load the parsed JSON from disk into the parsedInputs variable in format
-    // parsedInputs[systems_json_array, components_json_array]
-    let parsedInputs = loadParsedManifest(currentXMLFile);
+    logger.debug(`Loading the manifest for ${currentXMLFile}`);
+    let systems = "";
+    let components = "";
+
+    // Load and parse the updated systems file from disk
+    try {
+      systems = fs.readFileSync(parsed_path + `/${currentXMLFile}_systems.json`, "utf8");
+      systems = JSON.parse(systems);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new Error(`The systems file ${parsed_path}/${currentXMLFile}_systems.json does not exist.`);
+      } else {
+        throw new Error(`An error occurred while trying to read or parse the systems JSON file for ${currentXMLFile}. The error message was: ${error.message}`);
+      }
+    }
+
+    // Load and parse the updated components file from disk
+    try {
+      components = fs.readFileSync(parsed_path + `/${currentXMLFile}_components.json`, "utf8");
+      components = JSON.parse(components);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new Error(`The components file ${parsed_path}/${currentXMLFile}_components.json does not exist.`);
+      } else {
+        throw new Error(`An error occurred while trying to read or parse the components JSON file for ${currentXMLFile}. The error message was: ${error.message}`);
+      }
+    }
 
     // Push the parsed JSON into the database
-    await pushManifestDatabase(parsedInputs, trx);
-    console.info(`INFO: Successfully added data for ${currentXMLFile} to the database.`);
+    await pushManifestDatabase([systems, components], trx);
+    logger.info(`Successfully added data for ${currentXMLFile} to the database.`);
 
     // Disable client redirects if they were enabled
     redirectFlag = false;
     return redirectFlag;
   } catch (error) {
-    console.error(`ERROR: While trying to update the database with the new ` +
+    logger.error(`While trying to update the database with the new ` +
     `system information from the XML file ` +
     `${parsed_path + "/" + currentXMLFile + '*.json'} we encountered a ` +
     `critical error. The error was: ${error}.`);
@@ -286,44 +269,4 @@ module.exports.rebuildDatabase = async (currentXMLFile, redirectFlag) => {
     redirectFlag = false;
     return redirectFlag;
   }
-};
-
-/**
- * Determines if the provided file is a repository folder.
- * A repository folder is identified by containing at least one XML file.
- * 
- * @param {*} file - The file object to be checked.
- * @returns {boolean} True if the file is a repository folder, otherwise false.
- */
-function returnRepoFolder(file) {
-  // Check if the file is a directory.
-  if (file.isDirectory()) {
-    // Construct the full path to the potential repository folder.
-    let repoPath = path.join(repo_path, file.name);
-    
-    // Filter the contents of the directory to find XML files.
-    let repoFolder = fs
-      .readdirSync(repoPath, { withFileTypes: true })
-      .filter((file) => path.extname(file.name) === ".xml")
-      .find((e) => true); // It's unclear what the intention is with this find condition.
-
-    // Return true if at least one XML file was found in the directory, indicating it's a repository folder.
-    return repoFolder;
-  } else {
-    // If the file is not a directory, return false.
-    return false;
-  }
-}
-
-/**
- * Traverses the repository path and returns an array of repository folders.
- * Repository folders are determined based on a filtering function.
- * 
- * @returns {Array} An array of repository folders.
- */
-module.exports.traverseXML = () => {
-  let repoFolders = fs
-    .readdirSync(repo_path, { withFileTypes: true })
-    .filter((file) => returnRepoFolder(file));
-  return repoFolders;
 };

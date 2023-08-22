@@ -53,7 +53,7 @@
   font-size: 14px;
 }
 
-.product-tab-link-active {
+.product-tab-link.active {
   background: white;
   border-top: 2px solid #006bbd;
 }

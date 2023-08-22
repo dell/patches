@@ -21,8 +21,10 @@ function camelToSnake(string) {
  * exports.seed - This is a generic Knex method used when there is no data in
  * the database. It allows you to load it with something before running. In our
  * case, it will look for parsed JSON files and load them in.
- * @param {*} knex TODO - https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635038
- * @returns TODO - https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29635038
+ * @param {Knex} knex - An instance of Knex.js. It provides the interface to run
+ * database queries and migrations. More details can be found at the given TODO link.
+ * @returns {Promise} - Returns a promise that resolves when all the seed data has been
+ * inserted into the database. More information about the return value can be found at the given TODO link.
  */
 exports.seed = function (knex) {
 

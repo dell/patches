@@ -16,7 +16,7 @@
   font-size: 14px;
 }
 
-.admin-tab-link-active {
+.admin-tab-link.active {
   background: white;
   border-top: 2px solid #006bbd;
 }

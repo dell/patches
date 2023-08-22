@@ -1,38 +1,30 @@
-import React, { Component } from "react";
-import { Switch, Route } from "react-router-dom";
 import { Helmet } from "react-helmet";
+import { Route, Routes } from "react-router-dom";
 import Products from "./Products";
 import Product from "./Product";
 import Dashboard from "../Admin/Dashboard";
-import XmlDetails from "./Products/XmlDetails"
+import XmlDetails from "./Products/XmlDetails";
 import "./style.css";
 
-class Support extends Component {
-  render = () => {
-    return (
-      <div className="App">
-        <Helmet>
-          <title>Product Support | Dell US</title>
-        </Helmet>
-        <Switch>
-          <Route
-            path={"/products/:category?"}
-            component={(props) => {
-              return (
-                <div className="support-products">
-                  <Products {...props} />
-                </div>
-              );
-            }}
-            exact
-          />
-          <Route path="/products/:category/:device" component={Product} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/catalogs" component={XmlDetails} />
-        </Switch>
-      </div>
-    );
-  };
+function Support() {
+  return (
+    <div className="App">
+      <Helmet>
+        <title>Product Support | Dell US</title>
+      </Helmet>
+      <Routes>
+        <Route path="products/*" element={
+            <div className="support-products">
+              <Products />
+            </div>
+          }
+          exact
+        />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="catalogs" element={<XmlDetails />} />
+      </Routes>
+    </div>
+  );
 }
 
 export default Support;

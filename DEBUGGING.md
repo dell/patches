@@ -69,7 +69,9 @@ podman run \
   --name patches-backend \
   --env-file ${TOP_DIR}/.patches-backend \
   --volume ${TOP_DIR}/server/data:/home/node/app/data:Z \
+  --volume ${TOP_DIR}/server/config.js:/home/node/app/server/config.js:Z \
   --volume ${TOP_DIR}/server/routes:/home/node/app/server/routes:Z \
+  --volume ${TOP_DIR}/server/logger.js:/home/node/app/server/logger.js:Z \
   --volume ${TOP_DIR}/server/db.js:/home/node/app/server/db.js:Z \
   --volume ${TOP_DIR}/server/index.js:/home/node/app/server/index.js:Z \
   --volume ${TOP_DIR}/server/knexfile.js:/home/node/app/server/knexfile.js:Z \
@@ -111,6 +113,14 @@ node --inspect-brk=0.0.0.0:9229 server/index.js --knexfile /home/node/app/server
 ### Debugging the Frontend
 
 - Use the same debug configuration from the backend (it has the frontend embedded in it)
+- Go to your vscode settings and add the below. If you fail to do this, when you hit play in the debugger you will see something like `WARNING: Processing source-maps of https://10.10.25.130/static/js/main.d225dee5.js took longer than 11000 ms so we continued execution without waiting for all the breakpoints for the script to be set.Could not read source map for https://10.10.25.130/static/js/main.d225dee5.js: Unexpected 503 response from https://10.10.25.130/static/js/main.d225dee5.js.map: unable to verify the first certificate`. This is because the debugger is trying to apply certification verification. The below disables it.
+
+```json
+"debug.javascript.resourceRequestOptions":  { 
+    "https": { "rejectUnauthorized": false } 
+}
+```
+
 - Hit play in vscode
 - Go back to Patches and run:
 
@@ -134,7 +144,6 @@ podman run \
 - NOTE: YOU MUST RUN `podman restart patches-nginx` for the frontend to work when you do this otherwise nginx will used a cached DNS result for patches-backend which leads to a failure beacuse it will have the incorrect IP address
 - Inside the container run `npm start`
 - After everything is started you can either hit port 3000 directly but then API calls won't work. You can hit the regular IP and everything should work as expected.
-- TODO: Right now I'm having problems with the certificates - the debugger won't attach because it doesn't have a matching cert
 
 ## Debugging Certificates
 

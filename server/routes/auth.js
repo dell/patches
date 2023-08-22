@@ -1,10 +1,11 @@
 const getUserRoles = require("./roles").getUserRoles;
+const logger = require("../logger");
 
 module.exports = (app) => {
   // Define a GET route for authentication
   app.get("/api/auth", (req, res) => {
     // Log the user object from the request (debugging purposes)
-    console.info("auth user", req.user);
+    logger.info("auth user", req.user);
 
     // Extract subject, organizational_unit, organization, and country from the user object
     let { subject, organizational_unit, organization, country } = req.user;

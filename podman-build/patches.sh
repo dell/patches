@@ -1124,10 +1124,8 @@ function patches_setup() {
   # Setup environment variables for the patches backend
   > ${TOP_DIR}/.patches-backend
   echo "PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-backend
-  echo "PATCHES_USER=patches" >> "${TOP_DIR}/.patches-backend"
   echo "DATABASE_URL=postgresql://${PSQL_USERNAME}:${PSQL_PASSWORD}@patches-psql:${PSQL_PORT}/patches" >> "${TOP_DIR}/.patches-backend"
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-backend"
-  echo "DOWNLOAD_PATH=/patches/download" >> "${TOP_DIR}/.patches-backend"
   echo "XML_PATH=/patches/xml" >> "${TOP_DIR}/.patches-backend"
   echo "PARSED_PATH=/patches/xml/parsed" >> "${TOP_DIR}/.patches-backend"
   echo "REPO_PATH=/patches/xml/" >> "${TOP_DIR}/.patches-backend"
@@ -1144,8 +1142,6 @@ function patches_setup() {
 
   # Setup environment variables for the patches frontend
   > ${TOP_DIR}/.patches-frontend
-  # TODO This needs to be updated. See https://github.com/orgs/dell/projects/7/views/1?pane=issue&itemId=29634186
-  echo "NODE_OPTIONS=--openssl-legacy-provider" >> ${TOP_DIR}/.patches-frontend
   echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-frontend
   echo "PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-frontend
 
@@ -1243,8 +1239,6 @@ function patches_setup() {
   run_postgresql
 
   run_patches_services
-
-  sleep 5
 
   run_nginx
 
@@ -2036,7 +2030,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v1.3.3-beta"
+    patches_echo "The current version is v2.0.0-beta"
 
     ;;
 
