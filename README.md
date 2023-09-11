@@ -1,7 +1,7 @@
 # Patches
 
 - [Patches](#patches)
-  - [Beta](#beta)
+  - [Beta Is Coming to a Close](#beta-is-coming-to-a-close)
   - [Quick Start](#quick-start)
   - [What Is Patches?](#what-is-patches)
   - [Supported Operating Systems](#supported-operating-systems)
@@ -35,9 +35,9 @@
     - [Patch Version](#patch-version)
   - [Debugging](#debugging)
 
-## Beta
+## Beta Is Coming to a Close
 
-Patches is currently in beta. The main branch will have the latest build but you may encounter bugs or problems. Please report them in the issue tracker.
+With the release of v2.0 of the beta all of the major development items for the Patches overhaul are coming to a close. We welcome any feedback! Feel free to post here or e-mail grant<underscore>curell<at>dell.com.
 
 ## Quick Start
 

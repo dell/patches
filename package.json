@@ -1,6 +1,6 @@
 {
   "name": "patches",
-  "version": "2.0.0-beta",
+  "version": "v2.0.0-beta",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.11.1",
