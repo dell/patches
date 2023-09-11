@@ -1,10 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import http, { getUser, setUser, hasAdminRole } from "../http";
 import "./style.css";
 
 function Navbar() {
   const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false); // State to manage admin role
 
   useEffect(() => {
     http
@@ -14,14 +18,15 @@ function Navbar() {
           console.error(`Authenticating to the API server failed. Error was: ${res.error}`);
         } else {
           setUser(res.user);
+          setIsAdmin(hasAdminRole(res.user)); // Set admin role based on user data
         }
+        setLoading(false);
       })
       .catch((error) => {
         console.error(`Authenticating to the API server failed. Error was: ${error}`);
+        setLoading(false);
       });
   }, []);
-
-  const user = getUser();
 
   return (
     <div className="navbar">
@@ -35,16 +40,28 @@ function Navbar() {
               <img src={require("./static/images/dell-technologies.png")} alt="Dell Tech" />
             </div>
           </div>
-          <a className="nav-link products-link">
-            {user && <div className="nav-user">You are logged in as: {user.name}</div>}
-          </a>
+          {loading ? (
+            <a className="nav-link products-link">
+              <div className="nav-user">Loading username...</div>
+            </a>
+          ) : user ? (
+            <a className="nav-link products-link">
+              <div className="nav-user">You are logged in as: {user.name}</div>
+            </a>
+          ) : (
+            <a className="nav-link products-link">
+              <div className="nav-user">
+                Authentication failed. Please make sure your certificate is valid.
+              </div>
+            </a>
+          )}
           <Link className="nav-link" to="/catalogs">
             Catalog List
           </Link>
           <Link className="nav-link products-link" to="/products">
             Access Driver Systems Here
           </Link>
-          {hasAdminRole(user) && (
+          {isAdmin && (
             <a
               className="nav-link"
               onClick={() => {

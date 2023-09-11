@@ -340,35 +340,47 @@ configure_administrator() {
 
   # URL encode the password
   urlencode() {
-      local string="${1}"
-      local strlen=${#string}
-      local encoded=""
-      local pos c o
+    local string="${1}"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
 
-      for ((pos = 0; pos < strlen; pos++)); do
-          c="${string:$pos:1}"
-          case "$c" in
-              [-_.~a-zA-Z0-9]) o="${c}" ;;
-              *) printf -v o '%%%02x' "'$c"
-          esac
-          encoded+="${o}"
-      done
-      echo "${encoded}"
+    for ((pos = 0; pos < strlen; pos++)); do
+      c="${string:$pos:1}"
+      case "$c" in
+        [-_.~a-zA-Z0-9]) o="${c}" ;;
+        *) printf -v o '%%%02x' "'$c"
+      esac
+      encoded+="${o}"
+    done
+    echo "${encoded}"
   }
   encoded_password=$(urlencode "${PSQL_PASSWORD}")
 
   # Construct the connection URL with the encoded password
   connection_url="postgresql://${PSQL_USERNAME}:${encoded_password}@patches-psql:${PSQL_PORT}/${POSTGRES_DB}"
 
-  # Execute the SQL script using the connection URL
-  echo "-- SQL script for setting up admin user
-      INSERT INTO users (name) VALUES ('${1}');
+  # Check if the user already exists in the user_roles table
+  user_exists=$(echo "SELECT COUNT(*) FROM user_roles WHERE username = '${1}';" | podman exec -i "patches-psql" psql -t "${connection_url}")
 
+  if [ "${user_exists}" -eq 0 ]; then
+    # User doesn't exist in user_roles table, insert a new row
+    echo "-- SQL script for setting up admin user
+      INSERT INTO users (name) VALUES ('${1}');
       INSERT INTO user_roles (username, role_id, updating_user)
-      SELECT '${1}', 1, 'System' FROM users WHERE name = '${1}';
+      VALUES ('${1}', 1, 'System');
       " | podman exec -i "patches-psql" psql "${connection_url}"
 
-  patches_echo "${1} added as a Patches administrator."
+    patches_echo "${1} added as a Patches administrator."
+  else
+    # User already exists in user_roles table, update the role
+    echo "-- SQL script for updating admin role
+      UPDATE user_roles SET role_id = 1, updating_user = 'System'
+      WHERE username = '${1}';
+      " | podman exec -i "patches-psql" psql "${connection_url}"
+
+    patches_echo "${1}'s administrator role updated."
+  fi
 }
 
 # Function: cleanup_containers

@@ -7,8 +7,9 @@ const headers = {
 export const getUser = () => {
   try {
     return JSON.parse(window.localStorage.getItem("user"));
-  } catch {
-    return;
+  } catch (error) {
+    console.error("Error retrieving user from local storage:", error);
+    return null;
   }
 };
 
@@ -22,9 +23,10 @@ export const setUser = (user) => {
 
 export const hasAdminRole = (user) => {
   try {
-    return (user || getUser()).roles["title"] === "admin" ? true : false;
+    const currentUser = user || getUser(); // Get user data if not provided
+    return currentUser.roles["title"] === "admin"; // Check if user has admin role
   } catch {
-    return false;
+    return false; // Return false on error or if user doesn't have admin role
   }
 };
 

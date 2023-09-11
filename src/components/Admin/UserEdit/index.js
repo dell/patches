@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from "react";
-import qs from "qs";
-import http, { hasAdminRole } from "../../http";
 import Select from "react-select";
 import "./style.css";
 import { useTable, usePagination } from "react-table";
 import BTable from "react-bootstrap/Table";
 import Alert from "react-bootstrap/Alert";
 import Pagination from "react-bootstrap/Pagination";
+import http from '../../http';
 
+// Define a function to fetch roles using HTTP
 export const getRoles = (params, options) => {
   let { search } = params || {};
   return http.get(`/api/roles?search=${search}`, options);
 };
 
+// Initialize global variables
 let currentCell = null;
 let error = null;
 
+/**
+ * This function displays a list of users from the postgresql database and their current roles.
+ *
+ * @param {Object} props - Component props.
+ * @param {Array} columns - Array of column definitions
+ * @param {Array} data - Array of user data
+ */
 function UserTable({ columns, data }) {
+  // Destructure functions and state from the react-table library
   const {
     getTableProps,
     getTableBodyProps,
@@ -40,15 +49,19 @@ function UserTable({ columns, data }) {
     usePagination
   );
 
+  // Destructure current page index and page size from state
   const { pageIndex, pageSize } = state;
 
+  // Function to get the cell value when clicked
   const getCellVal = (cell) => {
     currentCell = cell.row.values;
   };
 
+  // Initialize an array for pagination page numbers
   let pageArray = [];
   let active = pageIndex;
 
+  // Function to generate pagination numbers
   function paginationNums() {
     for (let i = 0; i < pageOptions.length; i++) {
       pageArray.push(
@@ -64,11 +77,13 @@ function UserTable({ columns, data }) {
       );
     }
   }
+
+  // Render the UserTable component
   return (
     <div>
-      <dlv className="row">
+      <dlv className="row"> {/* Note: <dlv> is not a standard HTML element */}
         <div className="col-sm-12">
-          {paginationNums()}
+          {paginationNums()} {/* Render pagination numbers */}
           <BTable className="striped bordered hover" {...getTableProps()}>
             <thead className="">
               {headerGroups.map((headerGroup) => (
@@ -105,7 +120,7 @@ function UserTable({ columns, data }) {
       </dlv>
       <div className="row g-0">
         <div className="col-auto pagination-align-left">
-          <Pagination>{pageArray}</Pagination>
+          <Pagination>{pageArray}</Pagination> {/* Render pagination */}
         </div>
         <div className="col-auto">
           <span className="pagination-pad-left">
@@ -139,7 +154,25 @@ function UserTable({ columns, data }) {
   );
 }
 
+// UserEdit component for managing user data
 function UserEdit() {
+
+  // Use useEffect to fetch user data when the component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch user data using HTTP GET request
+        const res = await http.get(`/api/users`);
+        setData(res.users);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    
+    fetchData(); // Call the fetchData function
+  }, []); // The empty dependency array ensures this effect runs once on mount
+
+  // Function to change user role
   function changeUserRole(option) {
     return http
       .put(
@@ -154,24 +187,25 @@ function UserEdit() {
       });
   }
 
+  /**
+   * Opens a new browser window/tab to download a CSV file containing audit data.
+   * @returns {null} Returns null as this function is intended for initiating a file download.
+   */
   function getCSV() {
     window.open(`/api/users/audit`);
     return null;
   }
 
+  // Define role options for the Select component
   const roleOptions = [
     { value: 1, label: "Admin" },
     { value: 2, label: "User" },
   ];
 
+  // Initialize state for user data
   const [data, setData] = useState([]);
 
-  useEffect(() => {
-    return http.get(`/api/users`).then((res) => {
-      setData(res.users);
-    });
-  }, []);
-
+  // Define columns for the user table
   const columns = React.useMemo(
     () => [
       {
@@ -198,6 +232,7 @@ function UserEdit() {
             accessor: "",
             Cell: ({ row }) => {
               return (
+                // Render a Select component for role change
                 <Select
                   defaultValue={{
                     label: row.original.title,
@@ -227,10 +262,12 @@ function UserEdit() {
     []
   );
 
+  // Render the UserEdit component
   return (
     <div className="container-fluid">
       <div className="row">
         <div className="col-sm-4">
+          {/* Display an error message if 'error' is true */}
           {error == true && (
             <div className="error-box">
               <Alert variant="danger">
@@ -241,10 +278,12 @@ function UserEdit() {
         </div>
       </div>
       <div>
+        {/* Render the UserTable component with specified columns and data */}
         <UserTable columns={columns} data={data} />
       </div>
       <div className="row">
         <div className="col">
+          {/* Button to download CSV data */}
           <button className="component-dl" onClick={getCSV}>
             Download CSV
           </button>
