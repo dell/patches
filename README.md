@@ -37,7 +37,7 @@
 
 ## Beta Is Coming to a Close
 
-With the release of v2.0 of the beta all of the major development items for the Patches overhaul are coming to a close. We welcome any feedback! Feel free to post here or e-mail grant<underscore>curell<at>dell.com.
+With the release of v2.0 of the beta all of the major development items for the Patches overhaul are coming to a close. We welcome any feedback! Feel free to post here or e-mail grant\<underscore\>curell\<at\>dell.com.
 
 ## Quick Start
 
