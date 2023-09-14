@@ -845,7 +845,7 @@ function run_patches_services() {
 
 }
 
-# enable_systemd_service enables the creation of a systemd service to run Patches on startup
+# enable_cron_job enables the creation of a systemd service to run Patches on startup
 #
 # Parameters:
 #   None
@@ -856,81 +856,28 @@ function run_patches_services() {
 #
 # Returns:
 #   None
-function enable_systemd_service() {
-  # Check if Patches service is already installed and running
-  if systemctl --user is-enabled patches.service >/dev/null 2>&1; then
-    patches_echo "Patches systemd service is already installed and running. Skipping service creation."
-    return
+function enable_cron_job() {
+
+  # Check if the script is already executable
+  if [ ! -x "$0" ]; then
+      # Make the script executable
+      chmod +x "$0"
+      patches_echo "patches.sh is now executable."
   fi
 
-  # Prompt the user if they want to create a systemd service
-  if ask_yes_no "Do you want to create a systemd service to run Patches on startup? This will require sudo privileges."; then
+  # Define the line to be added to the crontab
+  CRON_LINE="@reboot $SCRIPT_DIR/patches.sh start"
 
-    # Enable linger for the user
-    if sudo loginctl enable-linger $(whoami); then
-
-      patches_echo "Linger enabled for the user."
-
-      # Get the current user's name
-      current_user=$(whoami)
-
-      # Directory path for user systemd unit files
-      unit_files_dir="/home/$current_user/.config/systemd/user/"
-
-      # Create an overarching service unit file for patches.service
-      overarching_service_unit="${unit_files_dir}patches.service"
-      cat > "$overarching_service_unit" <<EOF
-[Unit]
-Description=Overarching service to manage Patches containers
-Documentation=man:systemd(1)
-
-[Service]
-Type=oneshot
-ExecStart=/bin/true
-# This service shall be considered active after start
-RemainAfterExit=yes
-
-[Install]
-WantedBy=default.target
-EOF
-
-      # Loop through the container names
-      for container_name in "${containers[@]}"; do
-          service_name="patches-${container_name#patches-}"
-
-          # Check if the service file exists, and if so, delete it
-          if [[ -f "${unit_files_dir}${service_name}.service" ]]; then
-              systemctl --user stop "$service_name.service"
-              systemctl --user disable "$service_name.service"
-              rm "${unit_files_dir}${service_name}.service"
-          fi
-
-          # Generate systemd unit file
-          podman generate systemd --name "$container_name" > "${unit_files_dir}${service_name}.service"
-
-          # Enable the user service
-          systemctl --user enable "$service_name.service"
-
-          # Add PartOf and After directives to individual container services
-          sed -i "/\[Unit\]/a PartOf=patches.service\nAfter=patches.service" "${unit_files_dir}${service_name}.service"
-
-          # Update WantedBy directive to be WantedBy=patches.service
-          sed -i "s/WantedBy=default.target/WantedBy=patches.service/" "${unit_files_dir}${service_name}.service"
-      done
-
-      # Enable and start the overarching service
-      systemctl --user enable "patches.service"
-
-      patches_echo "User systemd unit files generated and services enabled."
-
-    else
-      patches_echo "We were unable to enable linger for your user. We cannot install the systemd service. The setup has not failed but we are skipping the installation of the systemd service. You can still start patches manually as your user with \`bash ${SCRIPT_DIR}/patches.sh start\`. You can also re-attempt the service setup with \`bash ${SCRIPT_DIR}/patches.sh install-service\`." --error    
-    fi
+  # Check if the line already exists in the crontab
+  if ! (sudo -u $(whoami) crontab -l | grep -qF "$CRON_LINE"); then
+      # If not found, add the line to the user's crontab
+      (sudo -u $(whoami) crontab -l; echo "$CRON_LINE") | sudo -u $(whoami) crontab -
+      patches_echo "Cron job added to start Patches."
   else
-    patches_echo "Skipping systemd service creation."
+      patches_echo "Cron job already exists. Not adding it again."
   fi
-}
 
+}
 
 # patches_build builds the necessary Docker images for the Patches application
 #
@@ -1277,7 +1224,7 @@ function patches_setup() {
   patches_echo "Configuring ${PATCHES_ADMINISTRATOR} as the administrator for the PostgreSQL database..."
   configure_administrator "${PATCHES_ADMINISTRATOR}"
 
-  enable_systemd_service
+  enable_cron_job
 
   echo "setup_complete" > ${SCRIPT_DIR}/.container-info-patches.txt
 
@@ -1582,16 +1529,25 @@ function patches_stop() {
     exit 1
   fi
 
-  # Stop all patches services in one command
-  systemctl --user stop "${containers[@]}"
+  podman stop patches-httpd
+  podman stop patches-nginx
+  podman stop patches-frontend
+  podman stop patches-backend
+  podman stop patches-psql
 
-  # Print status for each service
+  # Loop over the containers
   for container_name in "${containers[@]}"; do
-    if ! systemctl --user is-active "${container_name}" >/dev/null; then
-      patches_echo "Service ${container_name} is stopped."
-    else
-      patches_echo "Failed to stop service ${container_name}."
-    fi
+      # Check if the container exists
+      if podman ps -a --format '{{.Names}}' | grep -q "$container_name"; then
+          # Check if the container has exited (status code 0 indicates a correct exit)
+          if [ "$(podman inspect -f '{{.State.ExitCode}}' "$container_name")" -eq 0 ]; then
+              echo "Container '$container_name' has correctly exited."
+          else
+              echo "Container '$container_name' has exited with an error (Exit Code: $(podman inspect -f '{{.State.ExitCode}}' "$container_name"))."
+          fi
+      else
+          echo "Container '$container_name' does not exist."
+      fi
   done
 }
 
@@ -1612,16 +1568,24 @@ function patches_start() {
     exit 1
   fi
 
-  # Start all patches services in one command
-  systemctl --user start "${containers[@]}"
+  podman start patches-psql
+  sleep 2
+  podman start patches-backend
+  sleep 8
+  podman start patches-frontend
+  sleep 2
+  podman start patches-nginx
+  podman start patches-httpd
+  sleep 5
 
-  # Print status for each service
-  for container_name in "${containers[@]}"; do
-    if systemctl --user is-active "${container_name}" >/dev/null; then
-      patches_echo "Service ${container_name} is running."
-    else
-      patches_echo "Failed to start service ${container_name}."
-    fi
+  # Print status for each container
+  for container in "${containers[@]}"; do
+      # Check if the container is in a running state
+      if podman inspect -f '{{.State.Running}}' "$container" 2>/dev/null | grep -q "true"; then
+          patches_echo "Container '$container' is running."
+      else
+          patches_echo "Container '$container' is not running." --error
+      fi
   done
 }
 
@@ -1642,16 +1606,29 @@ function patches_restart() {
     exit 1
   fi
 
-  # Restart all patches services in one command
-  systemctl --user restart "${containers[@]}"
+  podman stop patches-httpd
+  podman stop patches-nginx
+  podman stop patches-frontend
+  podman stop patches-backend
+  podman stop patches-psql
+  podman start patches-psql
+  sleep 2
+  podman start patches-backend
+  sleep 8
+  podman start patches-frontend
+  sleep 2
+  podman start patches-nginx
+  podman start patches-httpd
+  sleep 5
 
-  # Print status for each service
-  for container_name in "${containers[@]}"; do
-    if systemctl --user is-active "${container_name}" >/dev/null; then
-      patches_echo "Service ${container_name} is running."
-    else
-      patches_echo "Failed to restart service ${container_name}."
-    fi
+  # Loop over the containers
+  for container in "${containers[@]}"; do
+      # Check if the container is in a running state
+      if podman inspect -f '{{.State.Running}}' "$container" 2>/dev/null | grep -q "true"; then
+          patches_echo "Container '$container' is running."
+      else
+          patches_echo "Container '$container' is not running." --error
+      fi
   done
 }
 
@@ -1959,7 +1936,7 @@ logs)
 
   install-service)
 
-      enable_systemd_service
+      enable_cron_job
 
     ;;
 
@@ -2042,7 +2019,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v2.0.0-beta"
+    patches_echo "The current version is v2.0.1-beta"
 
     ;;
 

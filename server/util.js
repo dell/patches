@@ -323,10 +323,8 @@ function checkXmlFiles() {
       // Process XML files already registered in the database
       for(let j = 0; j < xmlFiles.length; j++) {
         // Ensure split is properly initialized before using it
-        let split = opts.watchPath.split('/');
-        logger.info(`${opts.watchPath + '/' + split[split.length - 1]} already exists in the database.`);
-        split = xmlFiles[j].file_path.split("/");
-        watchSetup(split[split.length - 1]);
+        logger.info(`${opts.watchPath + xmlFiles[j].file_name} already exists in the database.`);
+        watchSetup(path.join(xmlFiles[j].file_path, xmlFiles[j].file_name));
       }
 
       // Compare discovered XML files with the registered ones in the database

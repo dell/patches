@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the version to be downloaded
-VERSION="v2.0.0-beta"
+VERSION="v2.0.1-beta"
 
 # Check if the script is being run as root
 if [[ $EUID -ne 0 ]]; then
