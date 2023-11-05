@@ -861,7 +861,7 @@ function enable_cron_job() {
   # Check if the script is already executable
   if [ ! -x "$0" ]; then
       # Make the script executable
-      chmod +x "${SCRIPT_DIR}/$0"
+      chmod +x "${SCRIPT_DIR}/$(basename "$0")"
       patches_echo "patches.sh is now executable."
   fi
 
