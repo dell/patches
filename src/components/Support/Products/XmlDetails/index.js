@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import http from "../../../http";
 import XmlTreeComponents from "./VersionViewer";
 import "./style.css";
-import TreeView from "@mui/lab/TreeView";
-import TreeItem from "@mui/lab/TreeItem";
+import { TreeView } from '@mui/x-tree-view';
+import { TreeItem } from '@mui/x-tree-view/TreeItem'
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { v4 as uuidv4 } from 'uuid';

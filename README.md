@@ -1,12 +1,12 @@
 # Patches
 
 - [Patches](#patches)
-  - [Beta Is Coming to a Close](#beta-is-coming-to-a-close)
   - [Quick Start](#quick-start)
   - [What Is Patches?](#what-is-patches)
   - [Supported Operating Systems](#supported-operating-systems)
     - [What is Rocky Linux and Where Can I Get It](#what-is-rocky-linux-and-where-can-i-get-it)
     - [STIGs](#stigs)
+      - [Recent Problems with STIGs / FIPS](#recent-problems-with-stigs--fips)
       - [How to Apply](#how-to-apply)
   - [Support Browsers](#support-browsers)
   - [System Requirements](#system-requirements)
@@ -34,10 +34,7 @@
     - [Minor Version](#minor-version)
     - [Patch Version](#patch-version)
   - [Debugging](#debugging)
-
-## Beta Is Coming to a Close
-
-With the release of v2.0 of the beta all of the major development items for the Patches overhaul are coming to a close. We welcome any feedback! Feel free to post here or e-mail grant\<underscore\>curell\<at\>dell.com.
+  - [Current Maintainer](#current-maintainer)
 
 ## Quick Start
 
@@ -77,6 +74,13 @@ We recommend you use the Minimal distribution.
 If you need to apply [STIGs](https://public.cyber.mil/stigs/) for your organization Rocky Linux comes with an option in the installer to automatically STIG the operating system. See [this official Rocky Linux guide](https://docs.rockylinux.org/books/disa_stig/disa_stig_part1/) for how to create a STIG-hardened Rocky instance automatically.
 
 **Note** At the time of writing the docs only mention Rocky Linux 8 but it is available for Rocky Linux 9 as well.
+
+#### Recent Problems with STIGs / FIPS
+
+Due to recent changes in the STIGs and FIPS some functionality no longer works.
+
+- FIPS: We are no longer FIPS compliant because FIPS has banned MD5 and much of the world still uses MD5 to include a large number of open source dependencies. Particularly because it is often used for non-security related things which FIPS prohibits equally. Until all dependencies update to remove MD5 from even non-security contexts, we cannot run FIPS.
+- Recent STIG updates have broken certain aspects of certificate handling. This means you will have to disable client certificate auth for Patches. The server cert still functions normally.
 
 #### How to Apply
 
@@ -321,3 +325,7 @@ This is incremented when we make bug fixes or address issues in a backward-compa
 ## Debugging
 
 See [DEBUGGING.md](./DEBUGGING.md)
+
+## Current Maintainer
+
+Grant Curell grant_curell AT dell DOT com is the current maintainer.

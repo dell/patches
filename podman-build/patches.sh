@@ -1064,14 +1064,14 @@ function patches_setup() {
   cleanup_containers
 
   # Ask the user if they want to disable client certificate authentication
-  if ask_yes_no "Do you want to disable client certificate authentication? Disabling client certificate authentication will make it so that users will not be rejected website entry if they do not provide a valid certificate. Note: **You will still need certificates for the admin panel.**"; then
+  if ask_yes_no "IF YOU ARE USING STIGS YOU MUST ANSWER YES! Do you want to disable client certificate authentication? Disabling client certificate authentication will make it so that users will not be rejected website entry if they do not provide a valid certificate. Note: **You will still need certificates for the admin panel.**"; then
     DISABLE_CLIENT_CERT_AUTH=true
   else
     DISABLE_CLIENT_CERT_AUTH=false
   fi
 
   # Ask the user if they want to disable client certificate requests
-  if ask_yes_no "Do you want to disable client certificate requests? Disabling this means that users will not be prompted at all for a certificate when they visit the website. Only disabling client certificate authentication in the previous step means that users do not have to provide a valid certificate but they will still be prompted for a certificate of some type and that certificate will be logged. This setting effectively disables certificates completely. Users will not be prompted to provide one and this will also disable client certificate authentication. Note: **You will still need certificates for the admin panel.**"; then
+  if ask_yes_no "IF YOU ARE USING STIGS YOU MUST ANSWER YES! Do you want to disable client certificate requests? Disabling this means that users will not be prompted at all for a certificate when they visit the website. Only disabling client certificate authentication in the previous step means that users do not have to provide a valid certificate but they will still be prompted for a certificate of some type and that certificate will be logged. This setting effectively disables certificates completely. Users will not be prompted to provide one and this will also disable client certificate authentication. Note: **You will still need certificates for the admin panel.**"; then
     DISABLE_CLIENT_CERT_REQUEST=true
     DISABLE_CLIENT_CERT_AUTH=true
   else
@@ -2019,7 +2019,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v2.0.3-beta"
+    patches_echo "The current version is v2.0.4"
 
     ;;
 

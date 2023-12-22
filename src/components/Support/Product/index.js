@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
-import { NavLink, Link, Route, Routes, useParams, useLocation } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import http from "../../http";
 import Overview from "./Overview";
 import Drivers from "./Drivers";
