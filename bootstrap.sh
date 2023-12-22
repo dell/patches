@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the version to be downloaded
-VERSION="v2.0.2-beta"
+VERSION="v2.0.3-beta"
 
 # Check if the script is being run as root
 if [[ $EUID -ne 0 ]]; then
@@ -200,7 +200,7 @@ check_user_namespace() {
 
   # Check if user namespaces are enabled
   if [[ $(cat /proc/sys/user/max_user_namespaces) -eq 0 ]]; then
-    if ask_yes_no "Error: User namespaces are not enabled. This usually happens when STIGs are applied or on older versions of Arch. Enabling this will allow the current user and only the current user to run containers on the system. We do this to minimize the privileges required.?"; then
+    if ask_yes_no "Error: User namespaces are not enabled. This usually happens when STIGs are applied or on older versions of Arch. Enabling this will allow the current user and only the current user to run containers on the system. We do this to minimize the privileges required. Continue?"; then
       echo "Enabling user namespaces..."
       echo "user.max_user_namespaces=15000" | tee -a /etc/sysctl.conf > /dev/null
       sysctl -p
@@ -379,3 +379,4 @@ EOF
 print_ascii_art "$ascii_art"
 
 echo -e "\nTo get started, run \033[1;32mbash ${INSTALL_DIR}/podman-build/patches.sh setup\033[0m"
+patches_echo "WARNING WARNING WARNING: If you are running the STIG'd version of Patches you must disable FIPS because many modern day cryptographic libraries still have internal dependencies on MD5 which the latest version of FIPS breaks. Significant rewrites on various open source projects will have to occur before FIPS works again for many things. You can disable it with \`sudo fips-mode-setup --disable && sudo shutdown -r now\`. See: https://github.com/dell/patches/issues/28 and https://groups.google.com/g/linux.debian.bugs.dist/c/tRdeoZEXqG4"
