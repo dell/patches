@@ -826,7 +826,7 @@ function run_patches_services() {
     --env-file ${TOP_DIR}/.patches-backend \
     --volume ${TOP_DIR}/${CERT_DIRECTORY}:/patches/${CERT_DIRECTORY}:Z \
     --volume ${TOP_DIR}/repos/xml:/patches/xml:z \
-    --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:z \
+    --volume ${TOP_DIR}/repos/xml/parsed:/patches/xml/parsed:Z \
     --network host-bridge-net \
     --detach \
     localhost/dell/patches-base:latest \
