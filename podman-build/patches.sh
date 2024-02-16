@@ -2019,7 +2019,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v2.0.4"
+    patches_echo "The current version is v2.0.5"
 
     ;;
 
