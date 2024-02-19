@@ -153,7 +153,7 @@ def verify_certificate_common_name(certificate_file, config_field_name, certific
         domain_key = "SERVER_DOMAIN" if certificate_type == "SERVER" else "ROOT_CA_DOMAIN"
         domain = config_data.get(domain_key, "")
 
-        if config_value and common_name != config_value + f".{domain}":
+        if config_value and common_name not in (config_value, f"{config_value}.{domain}"):
             # Prompt the user to update the corresponding field in config.yml
             prompt = f"The common name in the certificate ({common_name}) does not match the expected value " \
                      f"({config_value + '.' + domain}).\nDo you want to update {config_field_name} in config.yml to " \
@@ -179,6 +179,8 @@ def verify_certificate_common_name(certificate_file, config_field_name, certific
                             exit(1)
                     else:
                         logger.info(f"{domain_key} value is correct. Continuing...")
+                else:
+                    update_config_field(domain_key, "")
                 return update_config_field(config_field_name, common_name.split('.')[0])
             else:
                 logger.error("No changes made to the corresponding field.")

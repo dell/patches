@@ -1132,11 +1132,20 @@ function patches_setup() {
   echo "INTERFACE=${interface}" >> "${TOP_DIR}/.patches-nginx"
   echo "SERVER_NAME=${SERVER_NAME}" >> "${TOP_DIR}/.patches-nginx"
   echo "SERVER_DOMAIN=${SERVER_DOMAIN}" >> "${TOP_DIR}/.patches-nginx"
-  echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
-  echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
+  if [ -n "${SERVER_DOMAIN}" ]; then
+    echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+    echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.${SERVER_DOMAIN}.key" >> "${TOP_DIR}/.patches-nginx"
+  else
+    echo "SERVER_CERT=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.crt" >> "${TOP_DIR}/.patches-nginx"
+    echo "SERVER_KEY=/patches/${CERT_DIRECTORY}/${SERVER_NAME}.key" >> "${TOP_DIR}/.patches-nginx"
+  fi
   echo "SERVER_CA=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "ROOT_CERT_DIRECTORY=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
-  echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.${ROOT_CA_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+  if [ -n "${ROOT_CA_DOMAIN}" ]; then
+    echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.${ROOT_CA_DOMAIN}.crt" >> "${TOP_DIR}/.patches-nginx"
+  else
+    echo "ROOT_CERT_PATH=/patches/${CERT_DIRECTORY}/${ROOT_CERT_DIRECTORY}/${ROOT_CA_NAME}.crt" >> "${TOP_DIR}/.patches-nginx"
+  fi
   echo "CERT_DIRECTORY=/patches/${CERT_DIRECTORY}" >> "${TOP_DIR}/.patches-nginx"
   echo "BACKEND_PORT=${BACKEND_PORT}" >> ${TOP_DIR}/.patches-nginx
   echo "FRONTEND_PORT=${FRONTEND_PORT}" >> ${TOP_DIR}/.patches-nginx
@@ -1680,14 +1689,14 @@ while [[ $# -gt 0 ]]; do
       echo -e "${COMMAND_COLOR}  install-service${EXPLANATION_COLOR}         Install the Patches service so it will start on startup. (requires sudo)"
       echo -e "${COMMAND_COLOR}  import-repository${EXPLANATION_COLOR}       Imports an existing repository into Patches"
       echo -e "${COMMAND_COLOR}  import-keys${EXPLANATION_COLOR}             Import existing keys for use with Patches. It accepts one of two argument styles."
-      echo -e "${COMMAND_COLOR}  restart-nginx${EXPLANATION_COLOR}           Restarts nginx only. This can be necessary if patches-backend changes IP."
-      echo -e "${COMMAND_COLOR}  version${EXPLANATION_COLOR}                 Prints the Patches version."
       echo -e "${EXPLANATION_COLOR}                          The first expects two arguments, the first is the file path to a root CA's public key"
       echo -e "${EXPLANATION_COLOR}                          (and optionally private key) in PEM format. The second is the file path to the Patches"
       echo -e "${EXPLANATION_COLOR}                          server public and private key combined in PEM format. WARNING: This command will fail"
       echo -e "${EXPLANATION_COLOR}                          if the PEM files have import passwords. The second option is to pass the path to a"
       echo -e "${EXPLANATION_COLOR}                          PKCS#12 file containing your server's certificate/private key and the trust chain."
-      echo -e "${EXPLANATION_COLOR}                          The PKCS#12 file *can* contain a password."
+      echo -e "${EXPLANATION_COLOR}                          The PKCS#12 file *can* contain a password."      
+      echo -e "${COMMAND_COLOR}  restart-nginx${EXPLANATION_COLOR}           Restarts nginx only. This can be necessary if patches-backend changes IP."
+      echo -e "${COMMAND_COLOR}  version${EXPLANATION_COLOR}                 Prints the Patches version."
       echo
       echo -e "Flags:"
       echo -e "${COMMAND_COLOR}  --continuous${EXPLANATION_COLOR}  Runs the 'start' command continuously, retrying failed services. This is primarily"
@@ -2019,7 +2028,7 @@ logs)
 
   version)
 
-    patches_echo "The current version is v2.0.5"
+    patches_echo "The current version is v2.0.6"
 
     ;;
 
