@@ -152,6 +152,8 @@ def verify_certificate_common_name(certificate_file, config_field_name, certific
             exit(1)
         domain_key = "SERVER_DOMAIN" if certificate_type == "SERVER" else "ROOT_CA_DOMAIN"
         domain = config_data.get(domain_key, "")
+        if domain is None:
+            domain = ""
 
         if config_value and common_name not in (config_value, f"{config_value}.{domain}"):
             # Prompt the user to update the corresponding field in config.yml
